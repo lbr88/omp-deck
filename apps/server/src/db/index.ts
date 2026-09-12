@@ -15,6 +15,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { logger } from "../log.ts";
+import i18n from "../i18n.ts";
 
 const log = logger("db");
 
@@ -147,7 +148,7 @@ export function openDb(opts: DbOpenOpts): Database {
 }
 
 export function getDb(): Database {
-	if (!instance) throw new Error("db not opened — call openDb() at boot");
+	if (!instance) throw new Error(i18n.t("db not opened — call openDb() at boot"));
 	return instance;
 }
 

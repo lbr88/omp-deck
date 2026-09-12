@@ -27,6 +27,8 @@
 
 import type { RoutineLayoutEdgeKind, RoutineSpec, RoutineStep } from "@omp-deck/protocol";
 
+import i18n from "@/i18n";
+
 export type CompileErrorCode =
 	| "duplicate-id"
 	| "missing-target"
@@ -72,7 +74,7 @@ export function compileGraph(spec: RoutineSpec): CompileResult {
 		if (count > 1) {
 			errors.push({
 				code: "duplicate-id",
-				message: `Duplicate step id "${id}" (appears ${count}×)`,
+				message: i18n.t('Duplicate step id "{{id}}" (appears {{count}}×)', { id, count }),
 				nodeIds: [id],
 			});
 		}
@@ -110,7 +112,7 @@ export function compileGraph(spec: RoutineSpec): CompileResult {
 		if (edge.from === edge.to) {
 			errors.push({
 				code: "self-loop",
-				message: `Step "${edge.from}" has an edge to itself`,
+				message: i18n.t('Step "{{from}}" has an edge to itself', { from: edge.from }),
 				nodeIds: [edge.from],
 			});
 			continue;
@@ -121,7 +123,7 @@ export function compileGraph(spec: RoutineSpec): CompileResult {
 	for (const id of [...missingTargets].sort()) {
 		errors.push({
 			code: "missing-target",
-			message: `Edge references unknown step "${id}"`,
+			message: i18n.t('Edge references unknown step "{{id}}"', { id }),
 			nodeIds: [id],
 		});
 	}
@@ -177,7 +179,7 @@ export function compileGraph(spec: RoutineSpec): CompileResult {
 		cycleIds.sort((a, b) => idIndex.get(a)! - idIndex.get(b)!);
 		errors.push({
 			code: "cycle",
-			message: `Cycle detected involving: ${cycleIds.join(", ")}`,
+			message: i18n.t("Cycle detected involving: {{ids}}", { ids: cycleIds.join(", ") }),
 			nodeIds: cycleIds,
 		});
 		// Cycle blocks save; hand back original order so callers don't crash.

@@ -34,6 +34,7 @@ import {
 	writeManagedEnvUpdates,
 } from "./env-store.ts";
 import { ENV_SCHEMA_BY_KEY, validateEnvValue } from "./env-schema.ts";
+import i18n from "./i18n";
 
 export function buildOrientationRouter(): Hono {
 	const app = new Hono();
@@ -55,10 +56,10 @@ export function buildOrientationRouter(): Hono {
 		try {
 			body = (await c.req.json()) as UpdatePreludeRequest;
 		} catch {
-			return c.json({ error: "invalid json body" }, 400);
+			return c.json({ error: i18n.t("invalid json body") }, 400);
 		}
 		if (body.value !== null && typeof body.value !== "string") {
-			return c.json({ error: "value must be string or null" }, 400);
+			return c.json({ error: i18n.t("value must be string or null") }, 400);
 		}
 		writePreludeOverride(body.value);
 		const resp: PreludeResponse = {
@@ -82,7 +83,7 @@ export function buildOrientationRouter(): Hono {
 		try {
 			body = (await c.req.json()) as UpdateStartCommandRequest;
 		} catch {
-			return c.json({ error: "invalid json body" }, 400);
+			return c.json({ error: i18n.t("invalid json body") }, 400);
 		}
 		const description = typeof body.description === "string" ? body.description : "";
 		const text = typeof body.body === "string" ? body.body : "";
@@ -103,7 +104,7 @@ export function buildOrientationRouter(): Hono {
 		try {
 			body = (await c.req.json()) as UpdateMaintenanceGateRequest;
 		} catch {
-			return c.json({ error: "invalid json body" }, 400);
+			return c.json({ error: i18n.t("invalid json body") }, 400);
 		}
 
 		const updates: Record<string, string | null> = {};
@@ -132,7 +133,7 @@ export function buildOrientationRouter(): Hono {
 				continue;
 			}
 			if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) {
-				return c.json({ error: `${String(field)} must be a positive integer or null` }, 400);
+				return c.json({ error: i18n.t("{{field}} must be a positive integer or null", { field: String(field) }) }, 400);
 			}
 			updates[envKey] = String(Math.floor(raw));
 		}

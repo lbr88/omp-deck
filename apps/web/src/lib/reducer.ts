@@ -102,6 +102,21 @@ export function applyEvent(state: SessionUi, event: AgentSessionEventJson): Sess
 		// ─── Agent lifecycle ───────────────────────────────────────────────
 		case "agent_start":
 			return { ...state, lastError: undefined };
+		// Remote-host errors arrive as session events (the deck re-emits the
+		// host's `error` frame through the event channel).
+		case "error":
+			return {
+				...state,
+				lastError: typeof event.error === "string" ? event.error : String(event.error ?? ""),
+			};
+		case "host_snapshot": {
+			// Authoritative remote snapshot (host's `subscribed` reply). The
+			// ws.ts `subscribed` frame fires first with the local cache (often
+			// empty); this event hydrates the full session from the host.
+			const snap = (event as { snapshot?: SessionSnapshot }).snapshot;
+			if (!snap) return state;
+			return initSession(snap);
+		}
 		case "agent_end":
 			return { ...state, status: "idle" };
 

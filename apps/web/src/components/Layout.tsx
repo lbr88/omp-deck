@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { NavRail } from "./NavRail";
 import { FoldVertical, Menu, PanelRight, UnfoldVertical, X } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function Layout({ sidebar, main, inspector, topBar }: Props) {
+	const { t } = useTranslation();
 	const sidebarOpen = useStore((s) => s.sidebarOpen);
 	const setSidebarOpen = useStore((s) => s.setSidebarOpen);
 	const inspectorOpen = useStore((s) => s.inspectorOpen);
@@ -84,9 +86,9 @@ export function Layout({ sidebar, main, inspector, topBar }: Props) {
 					type="button"
 					className={cn("btn-ghost h-7 w-7 p-0", sidebarOpen && "lg:bg-paper-3")}
 					onClick={() => setSidebarOpen(!sidebarOpen)}
-					aria-label={sidebarOpen ? "Hide sessions" : "Show sessions"}
+					aria-label={sidebarOpen ? t("Hide sessions") : t("Show sessions")}
 					aria-pressed={sidebarOpen}
-					title={sidebarOpen ? "Hide sessions" : "Show sessions"}
+					title={sidebarOpen ? t("Hide sessions") : t("Show sessions")}
 				>
 					<Menu className="h-4 w-4" />
 				</button>
@@ -101,9 +103,9 @@ export function Layout({ sidebar, main, inspector, topBar }: Props) {
 						type="button"
 						className={cn("btn-ghost h-7 w-7 p-0", inspectorOpen && "lg:bg-paper-3")}
 						onClick={() => setInspectorOpen(!inspectorOpen)}
-						aria-label={inspectorOpen ? "Hide inspector" : "Show inspector"}
+						aria-label={inspectorOpen ? t("Hide inspector") : t("Show inspector")}
 						aria-pressed={inspectorOpen}
-						title={inspectorOpen ? "Hide inspector" : "Show inspector"}
+						title={inspectorOpen ? t("Hide inspector") : t("Show inspector")}
 					>
 						<PanelRight className="h-4 w-4" />
 					</button>
@@ -117,7 +119,7 @@ export function Layout({ sidebar, main, inspector, topBar }: Props) {
 					<button
 						type="button"
 						className="absolute inset-0 z-20 bg-ink/20 backdrop-blur-[1px] lg:hidden"
-						aria-label="Dismiss panels"
+						aria-label={t("Close panels")}
 						onClick={() => {
 							setSidebarOpen(false);
 							setInspectorOpen(false);
@@ -183,19 +185,20 @@ export function Layout({ sidebar, main, inspector, topBar }: Props) {
 }
 
 function MobileCloseBar({ onClose, side }: { onClose: () => void; side: "left" | "right" }) {
+	const { t } = useTranslation();
 	return (
 		<div className="flex h-9 items-center border-b border-line px-2 lg:hidden">
 			<button
 				type="button"
 				className="btn-ghost h-7 w-7 p-0"
 				onClick={onClose}
-				aria-label="Close"
+				aria-label={t("Close")}
 			>
 				<X className="h-3.5 w-3.5" />
 			</button>
 			{side === "right" ? (
 				<span className="ml-2 font-mono text-2xs uppercase tracking-meta text-ink-3">
-					Inspector
+					{t("Inspector")}
 				</span>
 			) : null}
 		</div>
@@ -203,6 +206,7 @@ function MobileCloseBar({ onClose, side }: { onClose: () => void; side: "left" |
 }
 
 function ToolCardsToggle() {
+	const { t } = useTranslation();
 	const allCollapsed = useStore((s) => s.toolView.allCollapsed);
 	const toggle = useStore((s) => s.toggleAllToolCards);
 	const Icon = allCollapsed ? UnfoldVertical : FoldVertical;
@@ -211,8 +215,8 @@ function ToolCardsToggle() {
 			type="button"
 			className={cn("btn-ghost h-7 w-7 p-0", allCollapsed && "lg:bg-paper-3")}
 			onClick={toggle}
-			aria-label={allCollapsed ? "Expand all tool cards" : "Collapse all tool cards"}
-			title={allCollapsed ? "Expand all tool cards" : "Collapse all tool cards"}
+			aria-label={allCollapsed ? t("Expand all tool cards") : t("Collapse all tool cards")}
+			title={allCollapsed ? t("Expand all tool cards") : t("Collapse all tool cards")}
 		>
 			<Icon className="h-4 w-4" />
 		</button>

@@ -1,15 +1,22 @@
 # Deployment
 
-omp-deck ships **without an authentication layer**. It is designed to be
-loopback-only with network access gated by something else — Tailscale, an SSH
-tunnel, or a reverse proxy with its own auth. Do not bind it to a public
-interface without one of these.
+By default omp-deck is loopback-only with network access gated by something
+else — Tailscale, an SSH tunnel, or a reverse proxy with its own auth. Since
+0.7.0 it also ships an optional **access-token layer**
+(`OMP_DECK_ACCESS_TOKEN`) that protects every `/api`, `/ws` and `/uploads`
+request with a bearer token — use it for any public-ish binding, and
+combine it with the network-level gates below for defense in depth.
+
+Multi-machine deployments (a center deck on a VPS + omp agent hosts on your
+other machines) are covered in [multi-machine.md](multi-machine.md).
 
 ## Patterns
 
 - [Tailscale-gated (recommended)](#tailscale-gated-recommended)
 - [SSH tunnel](#ssh-tunnel)
+- [Access token](#access-token)
 - [Docker](#docker)
+- [Multi-machine](#multi-machine)
 - [Hardening checklist](#hardening-checklist)
 
 ## Tailscale-gated (recommended)
@@ -38,8 +45,9 @@ tailscale funnel --bg --https=443 http://127.0.0.1:8787
 ```
 
 Funnel exposes the URL to the public internet. Anyone with the link can
-reach the deck. Combine with bearer-token auth at the reverse proxy layer if
-you want this to be safe to share.
+reach the deck. Set `OMP_DECK_ACCESS_TOKEN` (see
+[Access token](#access-token)) before sharing a Funnel URL — without it the
+deck is fully open to whoever has the link.
 
 ## SSH tunnel
 
@@ -62,6 +70,43 @@ Host deck-host
   User <user>
   LocalForward 8787 127.0.0.1:8787
 ```
+
+## Access token (login)
+
+Since 0.7.0, setting `OMP_DECK_ACCESS_TOKEN` turns on authentication for
+every `/api`, `/ws` and `/uploads` request:
+
+```sh
+OMP_DECK_ACCESS_TOKEN="$(openssl rand -hex 32)" bun run start
+```
+
+The web client treats it as a **login**: the first visit (or any 401)
+shows a full-screen sign-in form. Entering the token calls
+`POST /api/auth/login`; the server validates it (constant-time) and issues
+an **HttpOnly, SameSite=Strict session cookie** (Secure under https;
+"Remember me" extends it to 30 days). The token never reaches
+JS-readable storage — after login the browser simply carries the cookie on
+every request and WebSocket upgrade. `POST /api/auth/logout` clears it, and
+**Settings → Access** shows the session state with a Sign-out button.
+
+API clients and admin scripts can still authenticate with
+`Authorization: Bearer <token>` — both paths are accepted, the cookie is
+what the browser uses.
+
+This layer is **not** a substitute for the network gates: it protects the
+deck's own surface but adds no identity story (no per-user accounts — the
+token is a shared site key). Put Tailscale/SSH in front for identity; use
+the token when the deck must be reachable from more than one machine.
+Serving over **HTTPS** is strongly recommended so the cookie's `Secure`
+attribute engages.
+
+## Multi-machine
+
+One center deck on a VPS + `omp-agent-host` extensions on each of your other
+machines: session aggregation with machine labels, per-machine session
+create/switch, remote env editing, and kanban task assignment to machines.
+Full walkthrough (center systemd/Docker, host extension install, systemd
+unit, security notes): **[multi-machine.md](multi-machine.md)**.
 
 ## Docker
 
@@ -102,6 +147,8 @@ OMP_DECK_DB_PATH=/var/lib/omp-deck/deck.db    # outside the container fs
 OMP_DECK_DATA_DIR=/var/lib/omp-deck           # managed .env + audit + bridge db
 OMP_AGENT_DIR=/var/lib/omp/agent              # SDK session + auth
 OMP_DECK_DEFAULT_CWD=/workspace               # mount your code here
+OMP_DECK_ACCESS_TOKEN=<openssl rand -hex 32>  # bearer gate for /api + /ws
+OMP_DECK_MACHINES_FILE=/var/lib/omp-deck/machines.json  # remote hosts (default)
 LOG_LEVEL=warn                                # quieter in steady state
 
 OMP_DECK_PUBLIC_URL=https://deck.example.com  # what the deck calls itself in text
@@ -123,7 +170,8 @@ Before exposing the deck on a network anyone else can reach:
       own authentication on automatically, so a public bind is no longer
       unprotected by default — but a network perimeter (Tailscale Serve, an SSH
       tunnel, a reverse proxy that enforces auth) is still the stronger option,
-      and the two compose.
+      and the two compose. Prefer `OMP_DECK_HOST=127.0.0.1` when possible
+      (confirm with `ss -tlnp` or `netstat`).
 - [ ] A password is configured (`OMP_DECK_AUTH_PASSWORD_HASH`, or completed
       first-run setup). Check the boot log: the deck warns loudly while no
       account exists.
@@ -132,6 +180,9 @@ Before exposing the deck on a network anyone else can reach:
 - [ ] TLS terminates in front of the deck, so the session cookie gets `Secure`.
       If your proxy doesn't set `X-Forwarded-Proto`, set
       `OMP_DECK_AUTH_SECURE_COOKIE=1`.
+- [ ] If the deck is reachable from more than one machine / remote agent hosts,
+      set `OMP_DECK_ACCESS_TOKEN` (and set it in the browser's localStorage —
+      the indicator shows "unauthorized" until it matches).
 - [ ] Provider API keys live in env vars (via shell profile or the deck's
       managed `.env`) — never committed in the repo or shipped in an image.
 - [ ] The data dir (`OMP_DECK_DATA_DIR`) is user-only readable. `chmod 700` on

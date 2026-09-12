@@ -1,6 +1,6 @@
 ---
 name: create-skill
-description: Author a new omp-native skill. Use when the user wants to capture a recurring workflow, create a skill from scratch, formalize a procedure into a SKILL.md, scaffold a new skill under ~/.omp/agent/skills/, or "turn this into a skill".
+description: 编写一个新的 omp 原生技能（skill）。当用户想要把重复性工作流固化成技能、从零创建技能、把流程整理成 SKILL.md、在 ~/.omp/agent/skills/ 下搭建新技能，或说"把这个变成技能"时使用。
 tags: [authoring, meta, omp-native]
 ---
 

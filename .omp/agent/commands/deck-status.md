@@ -1,5 +1,5 @@
 ---
-description: Test project-local slash command — report task/inbox/routine counts for omp-deck itself
+description: 测试项目级斜杠命令——报告 omp-deck 自身的任务/收件箱/例程统计
 ---
 You are running in the omp-deck workspace. Hit:
 

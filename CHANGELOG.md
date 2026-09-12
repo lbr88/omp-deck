@@ -5,6 +5,73 @@ All notable changes to omp-deck. The format is loosely based on
 
 ## [Unreleased]
 
+### Added
+
+- **Session login**: the access token (`OMP_DECK_ACCESS_TOKEN`) is now
+  exchanged for an HttpOnly, SameSite=Strict session cookie at a full-screen
+  sign-in form (first visit or any 401). The token never enters
+  JS-readable storage; Settings → Access shows session state + Sign out.
+  API clients keep `Authorization: Bearer`.
+- **Remote session resume**: persisted machine sessions can be resumed from
+  the sidebar — the host's SDK opens the file, loads full history into the
+  snapshot, and the chat hydrates it. Paths no machine knows fall back to
+  the deck's local bridge.
+
+## [0.7.0] — 2026-08-12 — Multi-machine remote agent hosts
+
+Run one center deck on a VPS and connect `omp-agent-host` extensions on
+each of your other machines: the center aggregates every machine's sessions
+in one sidebar (machine-labeled), creates/switches/aborts sessions on any
+machine, edits each machine's omp env, and kanban tasks can be assigned to a
+machine and opened as a session on that machine. See
+[docs/multi-machine.md](./docs/multi-machine.md).
+
+### Added
+
+- **Remote agent hosts**: `apps/agent-host` omp extension (runs inside
+  `omp --mode rpc`; no node_modules, no build step) exposing a REST+WS host
+  over the deck's session protocol — `/host/health`, `/host/sessions`
+  (CRUD + abort/compact/name/model/slash-dispatch/plan-response),
+  `/host/models`, `/host/env`, `/host/ws` (auth handshake first frame).
+- **Machines registry** (`machines.json`): Settings → Machines
+  add/edit/remove hosts (id, name, baseUrl, token, defaultCwd), live status
+  (online / model count / session count), and per-machine env editing
+  (proxies `/host/env`, persists to `~/.config/omp-agent-host/host.env`).
+- **Kanban task assignment**: `tasks.assigned_agent` (migration 005),
+  `POST /api/tasks/:id/assign`, assign dropdown in the task modal, machine
+  badge on cards, "Open in chat" creates the session on the assigned machine.
+- **Access-token auth** (`OMP_DECK_ACCESS_TOKEN`): bearer-token gate on every
+  `/api`, `/ws` and `/uploads` request (`/api/health` + `/api/version`
+  exempt); web client reads `localStorage "omp-deck:access-token"`; header
+  indicator shows "unauthorized" until it matches.
+- **Shared session core**: SDK wiring extracted to `apps/agent-host/src/
+  bridge/` (session-core, bridge-context, plan-mode + ext-ui bridges),
+  running against both SDK 15 (deck) and SDK 17 (omp binary) surfaces.
+
+### Changed
+
+- Protocol: `SessionSummary.agentId/agentName`, `CreateSessionRequest.agentId`,
+  `Task.assignedAgent`, `MachineInfo` + machines REST shapes, host link
+  frames (`HostClientFrame`/`HostServerFrame`) reusing the session protocol.
+- Full Chinese localization (web UI i18next with key = English original,
+  language switcher in Settings → Appearance; server messages via
+  `OMP_DECK_LANG=en|zh`; starter skills/commands/maintenance-gate
+  descriptions) — released with this version.
+- `docs/deployment.md` updated for the token layer + multi-machine mode.
+
+### Fixed
+
+- SDK 17 plan approval writes edits to the located plan file (not the state
+  default), pins the plan reference, and replays pending dialogs /
+  plan-mode state to late subscribers (page reloads keep modals + approval
+  cards).
+- Remote-host env edits survive host restarts (host.env loaded at boot) and
+  are written atomically (unique tmp + fsync).
+- Session summaries deduped when the deck and a host share an agent dir;
+  remote rows in the sidebar/picker select instead of resume.
+- Dead remote sessions surface an error and bail out of a ghost active
+  session instead of silently dropping frames.
+
 ## [0.6.1] — 2026-05-29 — In-app update notification
 
 Small follow-up to v0.6.0. Adds a passive update-check pill in the StatusBar so future releases (this one and onward) become discoverable from inside the deck instead of requiring users to run `npm outdated -g`.

@@ -4,6 +4,7 @@ import type { Subprocess } from "bun";
 import type { BridgeInfo, BridgeLogLine, BridgeName, BridgeStatus } from "@omp-deck/protocol";
 
 import { logger } from "./log.ts";
+import i18n from "./i18n.ts";
 import { resolveBunExecutable } from "./runtime-bun.ts";
 import { bridgeSpawnEnv } from "./spawn-env.ts";
 
@@ -89,7 +90,7 @@ export class BridgeSupervisor {
 
 		const missing = this.missingEnv(t.spec);
 		if (missing.length > 0) {
-			t.lastError = `missing required env: ${missing.join(", ")}`;
+			t.lastError = i18n.t("missing required env: {{env}}", { env: missing.join(", ") });
 			throw new Error(t.lastError);
 		}
 
@@ -195,7 +196,7 @@ export class BridgeSupervisor {
 
 	private requireBridge(name: BridgeName): Tracked {
 		const t = this.tracked.get(name);
-		if (!t) throw new Error(`unknown bridge: ${name}`);
+		if (!t) throw new Error(i18n.t("unknown bridge: {{name}}", { name }));
 		return t;
 	}
 

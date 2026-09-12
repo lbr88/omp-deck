@@ -8,6 +8,7 @@
  *
  * Response shape mirrors the server's `SavedUpload`.
  */
+
 const BASE = "/api";
 
 export interface UploadedImage {

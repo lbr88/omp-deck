@@ -15,6 +15,7 @@ import * as path from "node:path";
 
 import type { Routine, RoutineActionKind, RoutineSpec, RoutineTrigger } from "@omp-deck/protocol";
 
+import i18n from "./i18n.ts";
 import { logger } from "./log.ts";
 import {
 	finishRun,
@@ -183,7 +184,7 @@ export class RoutinesRunner {
 				triggerKind: trigger,
 				triggerPayload: JSON.stringify(payload),
 				abortReason: "failure",
-				error: `spec_yaml parse failure: ${String(err)}`,
+				error: i18n.t("spec_yaml parse failure: {{detail}}", { detail: String(err) }),
 			});
 			return;
 		}
@@ -195,7 +196,7 @@ export class RoutinesRunner {
 				endedAt: new Date().toISOString(),
 				abortedAt: new Date().toISOString(),
 				abortReason: "concurrency_skipped",
-				error: "skipped: another run is in flight",
+				error: i18n.t("skipped: another run is in flight"),
 			});
 			return;
 		}
@@ -256,7 +257,7 @@ async function runV0Action(
 ): Promise<{ exitCode?: number; stdoutExcerpt: string; stderrExcerpt: string; error?: string }> {
 	const cmd = buildV0Cmd(kind, body);
 	if (!cmd) {
-		return { error: `unsupported action kind: ${kind}`, stdoutExcerpt: "", stderrExcerpt: "" };
+		return { error: i18n.t("unsupported action kind: {{kind}}", { kind }), stdoutExcerpt: "", stderrExcerpt: "" };
 	}
 	const proc = Bun.spawn(cmd, {
 		cwd,

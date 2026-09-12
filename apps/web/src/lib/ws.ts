@@ -37,6 +37,8 @@ export class WsClient {
 
 	constructor(url?: string) {
 		const proto = location.protocol === "https:" ? "wss" : "ws";
+		// Auth rides the HttpOnly session cookie (attached automatically by
+		// the browser) — no token in the URL, ever.
 		this.url = url ?? `${proto}://${location.host}/ws`;
 	}
 

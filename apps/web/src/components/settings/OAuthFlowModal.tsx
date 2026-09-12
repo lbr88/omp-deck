@@ -16,6 +16,7 @@
  * spelled out. See docs/oauth-deck-sdk-findings.md.
  */
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ServerFrame } from "@omp-deck/protocol";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -40,6 +41,7 @@ interface PendingPrompt {
 }
 
 export function OAuthFlowModal({ open, provider, providerName, onClose, onComplete }: Props) {
+	const { t } = useTranslation();
 	const ws = useStore((s) => s.ws);
 	const [phase, setPhase] = useState<Phase>("starting");
 	const [flowId, setFlowId] = useState<string | null>(null);
@@ -54,7 +56,10 @@ export function OAuthFlowModal({ open, provider, providerName, onClose, onComple
 	const [showManual, setShowManual] = useState(false);
 	const [publicUrl, setPublicUrl] = useState<string | null>(null);
 
-	const title = useMemo(() => `Sign in to ${providerName ?? provider ?? "provider"}`, [providerName, provider]);
+	const title = useMemo(
+		() => t("Sign in to {{provider}}", { provider: providerName ?? provider ?? t("provider") }),
+		[providerName, provider],
+	);
 
 	/**
 	 * Is the deck somewhere the browser's own loopback isn't?
@@ -176,7 +181,7 @@ export function OAuthFlowModal({ open, provider, providerName, onClose, onComple
 		try {
 			await authApi.submitManualCode(flowId, manualCode.trim());
 			setManualCode("");
-			setProgress("Exchanging authorization code…");
+			setProgress(t("Exchanging authorization code…"));
 			setPhase("progress");
 		} catch (err) {
 			setErrorMessage(err instanceof Error ? err.message : String(err));
@@ -212,13 +217,13 @@ export function OAuthFlowModal({ open, provider, providerName, onClose, onComple
 				</div>
 
 				{phase === "starting" ? (
-					<div className="font-mono text-2xs text-ink-3">Preparing consent URL…</div>
+					<div className="font-mono text-2xs text-ink-3">{t("Preparing consent URL…")}</div>
 				) : null}
 
 				{phase === "consent" && consentUrl ? (
 					<div className="flex flex-col gap-2">
 						<a href={consentUrl} target="_blank" rel="noopener noreferrer">
-							<Button variant="primary" className="w-full">Open consent screen in new tab</Button>
+							<Button variant="primary" className="w-full">{t("Open consent screen in new tab")}</Button>
 						</a>
 						{/* The URL itself, copyable: someone approving on a different
 						    device (phone, another laptop) cannot follow a link that only
@@ -259,7 +264,7 @@ export function OAuthFlowModal({ open, provider, providerName, onClose, onComple
 				) : null}
 
 				{phase === "progress" ? (
-					<div className="font-mono text-2xs text-ink-3">{progress || "Working…"}</div>
+					<div className="font-mono text-2xs text-ink-3">{progress || t("Working…")}</div>
 				) : null}
 
 				{phase === "prompting" && prompt ? (
@@ -273,12 +278,12 @@ export function OAuthFlowModal({ open, provider, providerName, onClose, onComple
 							className="rounded border border-line bg-paper px-2 py-1.5 font-mono text-2xs"
 							autoFocus
 						/>
-						<Button onClick={submitPrompt}>Submit</Button>
+						<Button onClick={submitPrompt}>{t("Submit")}</Button>
 					</div>
 				) : null}
 
 				{phase === "complete" ? (
-					<div className="text-sm text-success">✓ Signed in. Closing…</div>
+					<div className="text-sm text-success">{t("✓ Signed in. Closing…")}</div>
 				) : null}
 
 				{phase === "error" && errorMessage ? (
@@ -346,7 +351,7 @@ export function OAuthFlowModal({ open, provider, providerName, onClose, onComple
 
 				<div className="flex justify-end gap-2 border-t border-line pt-3">
 					<Button variant="ghost" onClick={closeAndCancel}>
-						{phase === "complete" || phase === "error" ? "Close" : "Cancel"}
+						{phase === "complete" || phase === "error" ? t("Close") : t("Cancel")}
 					</Button>
 				</div>
 			</div>

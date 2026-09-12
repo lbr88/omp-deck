@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { selectActiveSession, useStore } from "@/lib/store";
 import { TodoPanel } from "./todos/TodoPanel";
 import { CostStrip } from "./chrome/CostStrip";
@@ -5,19 +6,20 @@ import { ModeBanner } from "./chrome/ModeBanner";
 import { shortPath } from "@/lib/utils";
 
 export function Inspector() {
+	const { t } = useTranslation();
 	const session = useStore(selectActiveSession);
 
 	if (!session) {
 		return (
 			<div className="px-4 py-6 font-mono text-2xs uppercase tracking-meta text-ink-3">
-				No session selected
+				{t("No session selected")}
 			</div>
 		);
 	}
 
 	return (
 		<div className="flex flex-col">
-			<Section title="Session">
+			<Section title={t("Session")}>
 				<KV k="id" v={short(session.sessionId)} title={session.sessionId} />
 				{session.sessionName ? <KV k="name" v={session.sessionName} /> : null}
 				<KV k="cwd" v={shortPath(session.cwd, 32)} title={session.cwd} />

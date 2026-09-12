@@ -8,6 +8,7 @@ import {
 	type DragEvent,
 	type KeyboardEvent,
 } from "react";
+import { useTranslation } from "react-i18next";
 import type { FilePathMatch, SlashCommand } from "@omp-deck/protocol";
 
 import { api } from "@/lib/api";
@@ -40,6 +41,7 @@ const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const slashCommandsCache = new Map<string, SlashCommand[]>();
 
 export function Composer() {
+	const { t } = useTranslation();
 	const session = useStore(selectActiveSession);
 	// The session *snapshot* only exists once the WS has delivered it. The
 	// selected id survives offline (persisted across reloads), so keying the
@@ -137,8 +139,8 @@ export function Composer() {
 				name: "plan",
 				scope: "deck",
 				description: planModeEnabled
-					? "Exit plan mode (or Shift+Tab)"
-					: "Enter plan mode — agent reads + proposes only (or Shift+Tab)",
+					? t("Exit plan mode (or Shift+Tab)")
+					: t("Enter plan mode — agent reads + proposes only (or Shift+Tab)"),
 				argumentHint: "[on|off]",
 			},
 			{
@@ -172,7 +174,7 @@ export function Composer() {
 				argumentHint: "",
 			},
 		],
-		[planModeEnabled],
+		[planModeEnabled, t],
 	);
 
 	const allSlashCommands = useMemo(
@@ -868,8 +870,8 @@ export function Composer() {
 						className="btn-ghost h-7 w-7 shrink-0 self-end p-0"
 						onClick={() => fileRef.current?.click()}
 						disabled={disabled}
-						aria-label="Attach image"
-						title="Attach image"
+						aria-label={t("Attach image")}
+						title={t("Attach image")}
 					>
 						<Paperclip className="h-4 w-4" />
 					</button>
@@ -880,14 +882,14 @@ export function Composer() {
 						rows={1}
 						placeholder={
 							disabled
-								? "Pick a session first"
+								? t("Pick a session first")
 								: planModeEnabled
-									? "Plan mode — agent reads + proposes only"
+									? t("Plan mode — agent reads + proposes only")
 									: isBusy
-										? "Streaming… enter to queue"
+										? t("Streaming… enter to queue")
 										: dragOver
-											? "Drop images here"
-											: "Message omp…"
+											? t("Drop images here")
+											: t("Message omp…")
 						}
 						onChange={(e) => {
 							setDraft(e.target.value);
@@ -912,11 +914,11 @@ export function Composer() {
 							type="button"
 							className="btn-danger h-7 gap-1 self-end px-2 text-xs"
 							onClick={() => abort()}
-							aria-label="Stop streaming (Ctrl+.)"
-							title="Stop streaming (Ctrl+.)"
+							aria-label={t("Stop streaming (Ctrl+.)")}
+							title={t("Stop streaming (Ctrl+.)")}
 						>
 							<Square className="h-3 w-3" fill="currentColor" />
-							<span className="font-mono uppercase tracking-meta text-2xs">stop</span>
+							<span className="font-mono uppercase tracking-meta text-2xs">{t("stop")}</span>
 						</button>
 					) : (
 						<button
@@ -924,8 +926,8 @@ export function Composer() {
 							className="btn-primary h-7 w-7 p-0 self-end disabled:bg-line-strong"
 							onClick={send}
 							disabled={disabled || (draft.trim().length === 0 && images.length === 0)}
-							aria-label="Send"
-							title="Send"
+							aria-label={t("Send")}
+							title={t("Send")}
 						>
 							<ArrowUp className="h-3.5 w-3.5" />
 						</button>
@@ -938,16 +940,18 @@ export function Composer() {
 							type="button"
 							onClick={() => clearQueue()}
 							className="rounded border border-line bg-paper px-1.5 py-0.5 uppercase tracking-meta text-ink-2 hover:text-danger hover:border-danger/40"
-							title="Drop every queued prompt for this session"
+							title={t("Drop every queued prompt for this session")}
 						>
-							{queuedCount} queued · cancel
+							{t("{{count}} queued · cancel", { count: queuedCount })}
 						</button>
 					) : null}
 					<span>
-						{images.length > 0
-							? `${images.length} image${images.length === 1 ? "" : "s"} · `
-							: ""}
-						enter send · shift+enter newline · paste/drop image
+						{images.length === 1
+							? t("1 image · ")
+							: images.length > 1
+								? t("{{count}} images · ", { count: images.length })
+								: ""}
+						{t("enter send · shift+enter newline · paste/drop image")}
 					</span>
 				</div>
 			</div>
@@ -966,11 +970,12 @@ function ImageThumb({
 	bytes: number;
 	onRemove: () => void;
 }) {
+	const { t } = useTranslation();
 	return (
 		<div className="group relative">
 			<img
 				src={preview}
-				alt={`pasted ${index}`}
+				alt={t("pasted {{n}}", { n: index })}
 				className="h-14 w-14 rounded border border-line object-cover bg-paper-3"
 			/>
 			<div className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-b bg-ink/75 px-1 py-0.5 text-center font-mono text-2xs text-paper-2">
@@ -980,7 +985,7 @@ function ImageThumb({
 				type="button"
 				onClick={onRemove}
 				className="absolute -right-1.5 -top-1.5 rounded-full bg-ink p-0.5 text-paper opacity-0 transition-opacity hover:bg-danger group-hover:opacity-100"
-				aria-label="Remove image"
+				aria-label={t("Remove image")}
 			>
 				<X className="h-3 w-3" />
 			</button>

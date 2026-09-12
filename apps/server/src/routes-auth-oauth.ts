@@ -40,6 +40,7 @@ import type {
 import { broadcastBus } from "./broadcast-bus.ts";
 import { getPublicUrl } from "./deck-urls.ts";
 import { getDeckAuthStorage, getDeckModelRegistry } from "./auth-singleton.ts";
+import i18n from "./i18n";
 import { logger } from "./log.ts";
 
 /**
@@ -158,7 +159,9 @@ function humanizeError(provider: string, raw: unknown): string {
 		// Provider-specific port hint — Anthropic 54545, Codex 1455.
 		const port =
 			provider === "anthropic" ? "54545" : provider === "openai-codex" ? "1455" : "the OAuth callback port";
-		return `Port ${port} in use — close any running 'omp /login' or other OAuth flow and retry.`;
+		return i18n.t("Port {{port}} in use — close any running 'omp /login' or other OAuth flow and retry.", {
+			port,
+		});
 	}
 	return msg;
 }
@@ -246,7 +249,9 @@ export function buildAuthOAuthRouter(): Hono {
 				return c.json(
 					{
 						error: "already-in-flight",
-						message: `An OAuth flow for ${provider} is already in progress. Cancel it first.`,
+						message: i18n.t("An OAuth flow for {{provider}} is already in progress. Cancel it first.", {
+							provider,
+						}),
 					},
 					409,
 				);
@@ -282,7 +287,9 @@ export function buildAuthOAuthRouter(): Hono {
 				type: "oauth_failed",
 				flowId,
 				provider,
-				message: `OAuth flow timed out after ${Math.round(OAUTH_FLOW_MAX_MS / 60_000)} minutes`,
+				message: i18n.t("OAuth flow timed out after {{minutes}} minutes", {
+					minutes: Math.round(OAUTH_FLOW_MAX_MS / 60_000),
+				}),
 			});
 		}, OAUTH_FLOW_MAX_MS);
 		// Manual-code deferred may be rejected on cancel even when the SDK never
@@ -448,7 +455,7 @@ export function buildAuthOAuthRouter(): Hono {
 	app.post("/:provider/cancel", async (c) => {
 		const provider = c.req.param("provider");
 		const flow = flows.get(provider);
-		if (!flow) return c.json({ ok: true, message: "no flow in progress" });
+		if (!flow) return c.json({ ok: true, message: i18n.t("no flow in progress") });
 		abortFlow(flow, "cancelled");
 		return c.json({ ok: true });
 	});
@@ -456,15 +463,15 @@ export function buildAuthOAuthRouter(): Hono {
 	app.post("/manual-code/:flowId", async (c) => {
 		const flowId = c.req.param("flowId");
 		const flow = flowsById.get(flowId);
-		if (!flow) return c.json({ error: "flow not found" }, 404);
+		if (!flow) return c.json({ error: i18n.t("flow not found") }, 404);
 		let body: OAuthManualCodeRequest;
 		try {
 			body = (await c.req.json()) as OAuthManualCodeRequest;
 		} catch {
-			return c.json({ error: "invalid json body" }, 400);
+			return c.json({ error: i18n.t("invalid json body") }, 400);
 		}
 		if (!body.code || typeof body.code !== "string") {
-			return c.json({ error: "code is required" }, 400);
+			return c.json({ error: i18n.t("code is required") }, 400);
 		}
 		flow.manualCode.resolve(body.code);
 		return c.json({ ok: true });
@@ -473,15 +480,15 @@ export function buildAuthOAuthRouter(): Hono {
 	app.post("/prompt-reply/:flowId", async (c) => {
 		const flowId = c.req.param("flowId");
 		const flow = flowsById.get(flowId);
-		if (!flow) return c.json({ error: "flow not found" }, 404);
+		if (!flow) return c.json({ error: i18n.t("flow not found") }, 404);
 		let body: OAuthPromptReplyRequest;
 		try {
 			body = (await c.req.json()) as OAuthPromptReplyRequest;
 		} catch {
-			return c.json({ error: "invalid json body" }, 400);
+			return c.json({ error: i18n.t("invalid json body") }, 400);
 		}
 		const resolver = flow.promptResolvers.get(body.promptId);
-		if (!resolver) return c.json({ error: "prompt not found" }, 404);
+		if (!resolver) return c.json({ error: i18n.t("prompt not found") }, 404);
 		flow.promptResolvers.delete(body.promptId);
 		resolver(body.answer);
 		return c.json({ ok: true });

@@ -19,6 +19,7 @@ interface SetPluginEnabledBody {
 }
 
 import { logger } from "./log.ts";
+import i18n from "./i18n";
 import type { MarketplaceService } from "./marketplace-service.ts";
 
 const log = logger("routes:marketplace");
@@ -149,10 +150,10 @@ export function buildMarketplaceRouter(service: MarketplaceService): Hono {
 		try {
 			body = (await c.req.json()) as InstallPluginRequest;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		if (!body.name || !body.marketplace) {
-			return c.json({ error: "name and marketplace are required" }, 400);
+			return c.json({ error: i18n.t("name and marketplace are required") }, 400);
 		}
 		try {
 			const installed = await service.install({
@@ -211,9 +212,9 @@ export function buildMarketplaceRouter(service: MarketplaceService): Hono {
 		try {
 			body = (await c.req.json()) as UninstallPluginRequest;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
-		if (!body.id) return c.json({ error: "id is required" }, 400);
+		if (!body.id) return c.json({ error: i18n.t("id is required") }, 400);
 		try {
 			await service.uninstall({ id: body.id, ...(body.scope ? { scope: body.scope } : {}) });
 			return c.json({ ok: true });
@@ -238,9 +239,9 @@ export function buildMarketplaceRouter(service: MarketplaceService): Hono {
 		try {
 			body = (await c.req.json()) as AddMarketplaceRequest;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
-		if (!body.source) return c.json({ error: "source is required" }, 400);
+		if (!body.source) return c.json({ error: i18n.t("source is required") }, 400);
 		try {
 			const added: MarketplaceSource = await service.addMarketplace(body.source);
 			return c.json({ ok: true, marketplace: added });

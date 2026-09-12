@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2, X } from "lucide-react";
 import type { TaskState } from "@omp-deck/protocol";
 import { tasksApi } from "@/lib/tasks-api";
@@ -21,6 +22,7 @@ const PRESET_COLORS = [
 
 /** Inline drawer to manage kanban columns: add / rename / recolor / delete. */
 export function StateConfig({ states, onClose, onChanged }: Props) {
+	const { t } = useTranslation();
 	const [newName, setNewName] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState<string | undefined>();
@@ -64,7 +66,14 @@ export function StateConfig({ states, onClose, onChanged }: Props) {
 
 	async function remove(state: TaskState): Promise<void> {
 		if (state.isDefault) return;
-		if (!confirm(`Delete column "${state.name}"? Tasks will move to the default column.`)) return;
+		if (
+			!confirm(
+				t('Delete column "{{name}}"? Tasks will move to the default column.', {
+					name: state.name,
+				}),
+			)
+		)
+			return;
 		try {
 			await tasksApi.removeState(state.id);
 			onChanged();
@@ -76,12 +85,12 @@ export function StateConfig({ states, onClose, onChanged }: Props) {
 	return (
 		<div className="flex h-full flex-col">
 			<div className="flex h-11 items-center gap-2 border-b border-line px-3">
-				<div className="meta">Columns</div>
+				<div className="meta">{t("Columns")}</div>
 				<button
 					type="button"
 					onClick={onClose}
 					className="btn-ghost ml-auto h-7 w-7 p-0"
-					aria-label="Close"
+					aria-label={t("Close")}
 				>
 					<X className="h-4 w-4" />
 				</button>
@@ -101,14 +110,14 @@ export function StateConfig({ states, onClose, onChanged }: Props) {
 									className="field h-7 flex-1 px-2 text-sm"
 								/>
 								{s.isDefault ? (
-									<span className="font-mono text-2xs text-ink-4">default</span>
+									<span className="font-mono text-2xs text-ink-4">{t("default")}</span>
 								) : (
 									<button
 										type="button"
 										onClick={() => void remove(s)}
 										className="text-ink-3 hover:text-danger"
-										aria-label="Delete column"
-										title="Delete column"
+										aria-label={t("Delete column")}
+										title={t("Delete column")}
 									>
 										<Trash2 className="h-3.5 w-3.5" />
 									</button>
@@ -121,7 +130,7 @@ export function StateConfig({ states, onClose, onChanged }: Props) {
 										type="button"
 										onClick={() => void recolor(s, c)}
 										title={c}
-										aria-label={`Set color ${c}`}
+										aria-label={t("Set color {{color}}", { color: c })}
 										className={
 											"h-4 w-4 rounded-full border border-line-strong"
 										}
@@ -138,7 +147,7 @@ export function StateConfig({ states, onClose, onChanged }: Props) {
 				</ul>
 
 				<div className="mt-4 border border-line bg-paper-2 px-3 py-2">
-					<div className="meta mb-1.5">Add column</div>
+					<div className="meta mb-1.5">{t("Add column")}</div>
 					<div className="flex items-center gap-1.5">
 						<input
 							value={newName}
@@ -146,7 +155,7 @@ export function StateConfig({ states, onClose, onChanged }: Props) {
 							onKeyDown={(e) => {
 								if (e.key === "Enter") void add();
 							}}
-							placeholder="Column name"
+							placeholder={t("Column name")}
 							className="field h-7 flex-1 px-2 text-sm"
 						/>
 						<button
@@ -156,7 +165,7 @@ export function StateConfig({ states, onClose, onChanged }: Props) {
 							className="btn-primary h-7 px-2 text-xs"
 						>
 							<Plus className="h-3.5 w-3.5" />
-							Add
+							{t("Add")}
 						</button>
 					</div>
 				</div>

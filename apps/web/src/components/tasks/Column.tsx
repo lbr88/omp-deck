@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
 	SortableContext,
 	useSortable,
@@ -13,6 +14,7 @@ import { TaskCard } from "./TaskCard";
 interface Props {
 	state: TaskState;
 	tasks: Task[];
+	machineNameById: Record<string, string>;
 	onCreate: (stateId: string, title: string) => void;
 	onOpen: (task: Task) => void;
 	onRenameRequest?: (state: TaskState) => void;
@@ -37,11 +39,13 @@ interface Props {
 export function Column({
 	state,
 	tasks,
+	machineNameById,
 	onCreate,
 	onOpen,
 	onRenameRequest,
 	isDraggingColumns,
 }: Props) {
+	const { t } = useTranslation();
 	const {
 		attributes,
 		listeners,
@@ -92,8 +96,8 @@ export function Column({
 						{...attributes}
 						{...listeners}
 						className="cursor-grab touch-none text-ink-4 hover:text-ink active:cursor-grabbing"
-						aria-label={`Drag to reorder column ${state.name}`}
-						title="Drag to reorder"
+						aria-label={t("Drag to reorder column {{name}}", { name: state.name })}
+						title={t("Drag to reorder")}
 					>
 						<GripVertical className="h-3.5 w-3.5" />
 					</button>
@@ -106,7 +110,7 @@ export function Column({
 						type="button"
 						onClick={() => onRenameRequest?.(state)}
 						className="font-mono text-2xs uppercase tracking-meta text-ink-2 hover:text-ink"
-						title="Edit column"
+						title={t("Edit column")}
 					>
 						{state.name}
 					</button>
@@ -116,8 +120,8 @@ export function Column({
 					type="button"
 					onClick={() => setComposing(true)}
 					className="text-ink-3 hover:text-ink"
-					aria-label="Add task"
-					title="Add task"
+					aria-label={t("Add task")}
+					title={t("Add task")}
 				>
 					<Plus className="h-4 w-4" />
 				</button>
@@ -127,7 +131,12 @@ export function Column({
 				<SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
 					<div className="flex flex-col gap-1.5">
 						{tasks.map((t) => (
-							<TaskCard key={t.id} task={t} onOpen={onOpen} />
+							<TaskCard
+								key={t.id}
+								task={t}
+								onOpen={onOpen}
+								machineName={t.assignedAgent ? machineNameById[t.assignedAgent] : undefined}
+							/>
 						))}
 					</div>
 				</SortableContext>
@@ -149,12 +158,12 @@ export function Column({
 									setComposing(false);
 								}
 							}}
-							placeholder="Task title — enter to add"
+							placeholder={t("Task title — enter to add")}
 							className="w-full resize-none bg-transparent text-sm placeholder:text-ink-4 focus:outline-none"
 						/>
 						<div className="mt-1 flex justify-between font-mono text-2xs text-ink-4">
-							<span>esc cancel</span>
-							<span>enter to add</span>
+							<span>{t("esc cancel")}</span>
+							<span>{t("enter to add")}</span>
 						</div>
 					</div>
 				) : (
@@ -163,7 +172,7 @@ export function Column({
 						onClick={() => setComposing(true)}
 						className="mt-2 w-full px-2 py-1.5 text-left font-mono text-2xs text-ink-4 hover:text-ink"
 					>
-						+ add task
+						+ {t("add task")}
 					</button>
 				)}
 			</div>

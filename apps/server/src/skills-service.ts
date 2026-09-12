@@ -33,6 +33,7 @@ import type {
 } from "@omp-deck/protocol";
 
 import type { Config } from "./config.ts";
+import i18n from "./i18n.ts";
 import { logger } from "./log.ts";
 import type { MarketplaceService } from "./marketplace-service.ts";
 
@@ -53,8 +54,8 @@ const PROVIDER_LABEL: Readonly<Record<string, string>> = {
 	windsurf: "Windsurf",
 	cline: "Cline",
 	gemini: "Gemini",
-	agents: "Subagents",
-	custom: "Custom",
+	agents: i18n.t("Subagents"),
+	custom: i18n.t("Custom"),
 };
 
 /**

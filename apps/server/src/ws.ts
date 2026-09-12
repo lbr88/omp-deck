@@ -3,6 +3,7 @@ import type { ClientFrame, ServerFrame } from "@omp-deck/protocol";
 
 import type { AgentBridge } from "./bridge/types.ts";
 import { broadcastBus } from "./broadcast-bus.ts";
+import i18n from "./i18n";
 import { logger } from "./log.ts";
 import { getBuildInfo, getUptimeSecs } from "./build-info.ts";
 import { checkGholamFramePermissions } from "./auth/gholam-permissions.ts";
@@ -109,7 +110,7 @@ export class WsHub {
 		try {
 			frame = JSON.parse(typeof raw === "string" ? raw : raw.toString("utf8")) as ClientFrame;
 		} catch {
-			send(ws, { type: "error", error: "invalid json" });
+			send(ws, { type: "error", error: i18n.t("invalid json") });
 			return;
 		}
 
@@ -198,7 +199,7 @@ export class WsHub {
 				return;
 
 			default:
-				send(ws, { type: "error", error: `unknown frame type` });
+				send(ws, { type: "error", error: i18n.t("unknown frame type") });
 		}
 	}
 
@@ -274,7 +275,7 @@ export class WsHub {
 
 		const handle = this.bridge.getSession(sessionId);
 		if (!handle) {
-			send(ws, { type: "error", sessionId, error: "session not active" });
+			send(ws, { type: "error", sessionId, error: i18n.t("session not active") });
 			return;
 		}
 
@@ -332,7 +333,7 @@ export class WsHub {
 	): Promise<void> {
 		const handle = this.bridge.getSession(frame.sessionId);
 		if (!handle) {
-			send(ws, { type: "error", sessionId: frame.sessionId, error: "session not active" });
+			send(ws, { type: "error", sessionId: frame.sessionId, error: i18n.t("session not active") });
 			return;
 		}
 		const opts: { streamingBehavior?: "steer" | "followUp"; images?: typeof frame.images } = {};
@@ -347,7 +348,7 @@ export class WsHub {
 			send(ws, {
 				type: "error",
 				sessionId: frame.sessionId,
-				error: `prompt failed: ${String(err)}`,
+				error: i18n.t("prompt failed: {{detail}}", { detail: String(err) }),
 			});
 		};
 		if (frame.text.startsWith("/")) {
@@ -379,27 +380,28 @@ export class WsHub {
 	private async handleAbort(ws: ServerWebSocket<ConnectionData>, sessionId: string): Promise<void> {
 		const handle = this.bridge.getSession(sessionId);
 		if (!handle) {
-			send(ws, { type: "error", sessionId, error: "session not active" });
+			send(ws, { type: "error", sessionId, error: i18n.t("session not active") });
 			return;
-	}
+		}
 		this.bridge.bumpActivity(sessionId);
 		try {
 			await handle.abort();
 		} catch (err) {
-			send(ws, { type: "error", sessionId, error: `abort failed: ${String(err)}` });
+			send(ws, { type: "error", sessionId, error: i18n.t("abort failed: {{detail}}", { detail: String(err) }) });
+		}
 	}
-	}
+
 	private handleClearQueue(ws: ServerWebSocket<ConnectionData>, sessionId: string): void {
 		const handle = this.bridge.getSession(sessionId);
 		if (!handle) {
-			send(ws, { type: "error", sessionId, error: "session not active" });
+			send(ws, { type: "error", sessionId, error: i18n.t("session not active") });
 			return;
 		}
 		this.bridge.bumpActivity(sessionId);
 		try {
 			handle.clearQueue();
 		} catch (err) {
-			send(ws, { type: "error", sessionId, error: `clear queue failed: ${String(err)}` });
+			send(ws, { type: "error", sessionId, error: i18n.t("clear queue failed: {{detail}}", { detail: String(err) }) });
 		}
 	}
 
@@ -409,7 +411,7 @@ export class WsHub {
 	): Promise<void> {
 		const handle = this.bridge.getSession(frame.sessionId);
 		if (!handle) {
-			send(ws, { type: "error", sessionId: frame.sessionId, error: "session not active" });
+			send(ws, { type: "error", sessionId: frame.sessionId, error: i18n.t("session not active") });
 			return;
 		}
 		this.bridge.bumpActivity(frame.sessionId);
@@ -419,7 +421,7 @@ export class WsHub {
 			send(ws, {
 				type: "error",
 				sessionId: frame.sessionId,
-				error: `cancel queued failed: ${String(err)}`,
+				error: i18n.t("cancel queued failed: {{detail}}", { detail: String(err) }),
 			});
 		}
 	}
@@ -430,7 +432,7 @@ export class WsHub {
 	): Promise<void> {
 		const handle = this.bridge.getSession(frame.sessionId);
 		if (!handle) {
-			send(ws, { type: "error", sessionId: frame.sessionId, error: "session not active" });
+			send(ws, { type: "error", sessionId: frame.sessionId, error: i18n.t("session not active") });
 			return;
 		}
 		// Refuse silently-empty edits — the user almost certainly meant cancel.
@@ -438,7 +440,7 @@ export class WsHub {
 			send(ws, {
 				type: "error",
 				sessionId: frame.sessionId,
-				error: "edit_queued: text required (use cancel_queued to drop)",
+				error: i18n.t("edit_queued: text required (use cancel_queued to drop)"),
 			});
 			return;
 		}
@@ -449,7 +451,7 @@ export class WsHub {
 			send(ws, {
 				type: "error",
 				sessionId: frame.sessionId,
-				error: `edit queued failed: ${String(err)}`,
+				error: i18n.t("edit queued failed: {{detail}}", { detail: String(err) }),
 			});
 		}
 	}
@@ -472,7 +474,7 @@ export class WsHub {
 			send(ws, {
 				type: "error",
 				sessionId,
-				error: `ext_ui_dialog_response failed: ${String(err)}`,
+				error: i18n.t("ext_ui_dialog_response failed: {{detail}}", { detail: String(err) }),
 			});
 		}
 	}
@@ -483,7 +485,7 @@ export class WsHub {
 	): Promise<void> {
 		const handle = this.bridge.getSession(frame.sessionId);
 		if (!handle) {
-			send(ws, { type: "error", sessionId: frame.sessionId, error: "session not active" });
+			send(ws, { type: "error", sessionId: frame.sessionId, error: i18n.t("session not active") });
 			return;
 		}
 		this.bridge.bumpActivity(frame.sessionId);
@@ -494,7 +496,9 @@ export class WsHub {
 			send(ws, {
 				type: "error",
 				sessionId: frame.sessionId,
-				error: `set_plan_mode failed: ${String((err as Error).message ?? err)}`,
+				error: i18n.t("set_plan_mode failed: {{detail}}", {
+					detail: String((err as Error).message ?? err),
+				}),
 			});
 		}
 	}
@@ -522,7 +526,9 @@ export class WsHub {
 				send(ws, {
 					type: "error",
 					sessionId,
-					error: `plan_response: proposal ${proposalId} already resolved or unknown`,
+					error: i18n.t("plan_response: proposal {{proposalId}} already resolved or unknown", {
+						proposalId,
+					}),
 				});
 			}
 		} catch (err) {
@@ -530,7 +536,9 @@ export class WsHub {
 			send(ws, {
 				type: "error",
 				sessionId,
-				error: `plan_response failed: ${String((err as Error).message ?? err)}`,
+				error: i18n.t("plan_response failed: {{detail}}", {
+					detail: String((err as Error).message ?? err),
+				}),
 			});
 		}
 	}

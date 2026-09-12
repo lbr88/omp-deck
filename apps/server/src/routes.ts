@@ -10,6 +10,7 @@ import type {
 } from "@omp-deck/protocol";
 
 import type { Config } from "./config.ts";
+import i18n from "./i18n";
 import { logger } from "./log.ts";
 import { getBuildInfo, getUptimeSecs } from "./build-info.ts";
 import { getUpdateCheck } from "./update-check.ts";
@@ -29,6 +30,8 @@ import type {
 	SessionSummary,
 } from "@omp-deck/protocol";
 import { existsSync } from "node:fs";
+import type { MultiAgentBridge } from "./bridge/multi.ts";
+import type { MachineRegistry } from "./machines.ts";
 
 const log = logger("routes");
 
@@ -84,6 +87,8 @@ import { getMcpHealthProbe } from "./mcp-health.ts";
 import { buildMcpHealthRouter } from "./routes-mcp-health.ts";
 import { buildSessionAttachRouter, buildSessionAttachWebRouter } from "./routes-session-attach.ts";
 import { startCustomProvidersWatcher } from "./custom-providers.ts";
+import { buildMachinesRouter } from "./routes-machines.ts";
+import { buildAuthSessionRouter } from "./routes-auth-session.ts";
 import type { RoutinesRunner } from "./routines-runner.ts";
 import type { BridgeSupervisor } from "./bridge-supervisor.ts";
 import type { MarketplaceService } from "./marketplace-service.ts";
@@ -98,7 +103,11 @@ export function buildRouter(
 	marketplace: MarketplaceService,
 	skills: SkillsService,
 	kb: KbService,
-	opts: { restartServer?: () => RestartServerResponse } = {},
+	opts: {
+		restartServer?: () => RestartServerResponse;
+		machines?: { registry: MachineRegistry; bridge: MultiAgentBridge };
+		authSession?: { getAccessToken: () => string };
+	} = {},
 ): Hono {
 	const app = new Hono();
 
@@ -224,7 +233,7 @@ export function buildRouter(
 		try {
 			body = (await c.req.json()) as CreateSessionRequest;
 		} catch {
-			return c.json({ error: "invalid json body" }, 400);
+			return c.json({ error: i18n.t("invalid json body") }, 400);
 		}
 
 		let cwd = body.cwd?.trim() || config.defaultCwd;
@@ -258,6 +267,7 @@ export function buildRouter(
 						cwd,
 						...(body.model ? { model: body.model } : {}),
 						...(body.suppressAutoStart ? { suppressAutoStart: true } : {}),
+						...(body.agentId && body.agentId !== "local" ? { agentId: body.agentId } : {}),
 					});
 			if (repoIdForBind && worktreeForBind) {
 				patchSessionMeta(handle.sessionId, {
@@ -280,7 +290,7 @@ export function buildRouter(
 	app.post("/sessions/:id/abort", async (c) => {
 		const id = c.req.param("id");
 		const handle = bridge.getSession(id);
-		if (!handle) return c.json({ error: "session not found" }, 404);
+		if (!handle) return c.json({ error: i18n.t("session not found") }, 404);
 		try {
 			await handle.abort();
 			return c.json({ ok: true });
@@ -293,14 +303,14 @@ export function buildRouter(
 	app.post("/sessions/:id/compact", async (c) => {
 		const id = c.req.param("id");
 		const handle = bridge.getSession(id);
-		if (!handle) return c.json({ error: "session not found" }, 404);
+		if (!handle) return c.json({ error: i18n.t("session not found") }, 404);
 		// Body is optional — accept missing/empty JSON without bouncing.
 		let body: { focus?: string } = {};
 		try {
 			const raw = await c.req.text();
 			if (raw.trim().length > 0) body = JSON.parse(raw) as { focus?: string };
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		try {
 			await handle.compact(body.focus);
@@ -321,7 +331,7 @@ export function buildRouter(
 		try {
 			body = (await c.req.json()) as typeof body;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		const metaPatch: Parameters<typeof patchSessionMeta>[1] = {};
 		if (body.archived !== undefined) metaPatch.archived = body.archived;
@@ -340,7 +350,7 @@ export function buildRouter(
 				const provider = typeof body.model.provider === "string" ? body.model.provider : "";
 				const modelId = typeof body.model.id === "string" ? body.model.id : "";
 				if (!provider || !modelId) {
-					return c.json({ error: "model requires provider and id strings" }, 400);
+					return c.json({ error: i18n.t("model requires provider and id strings") }, 400);
 				}
 				await handle.setModel({ provider, id: modelId });
 			}
@@ -475,6 +485,12 @@ export function buildRouter(
 	// so the two never overlap.
 	app.route("/auth", buildAuthRouter(getAuthConfig(), () => config.publicUrl));
 	app.route("/onboarding", buildOnboardingRouter());
+	if (opts.authSession) {
+		app.route("/auth", buildAuthSessionRouter(opts.authSession));
+	}
+	if (opts.machines) {
+		app.route("/", buildMachinesRouter(opts.machines.registry, opts.machines.bridge));
+	}
 
 	app.route("/", buildHarnessRouter(bridge));
 	app.route("/", buildPromptsRouter());
@@ -509,7 +525,7 @@ export function buildRouter(
 }
 
 function deriveLabel(cwd: string): string {
-	if (!cwd) return "(unknown)";
+	if (!cwd) return i18n.t("(unknown)");
 	const parts = cwd.split(/[\\/]/).filter(Boolean);
 	return parts[parts.length - 1] ?? cwd;
 }

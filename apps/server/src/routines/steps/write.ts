@@ -7,6 +7,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
 import type { RoutineStep } from "@omp-deck/protocol";
+import i18n from "../../i18n.ts";
 import { renderString } from "../template.ts";
 import type { RunContext, StepResult } from "../types.ts";
 
@@ -29,7 +30,12 @@ export async function executeWriteStep(
 		}
 		return {
 			status: "success",
-			stdoutExcerpt: `wrote ${content.length} bytes to ${target}${step.append ? " (append)" : ""}`,
+			stdoutExcerpt: step.append
+				? i18n.t("wrote {{bytes}} bytes to {{target}} (append)", {
+						bytes: content.length,
+						target,
+					})
+				: i18n.t("wrote {{bytes}} bytes to {{target}}", { bytes: content.length, target }),
 			stderrExcerpt: "",
 			json: { path: target, bytes: content.length, append: !!step.append },
 			durationMs: Date.now() - startedMs,

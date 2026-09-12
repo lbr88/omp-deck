@@ -3,6 +3,8 @@
  * height encodes duration (relative to the row's own max) and whose color
  * encodes outcome. Used on the routine list rows and in the editor inspector.
  */
+import { useTranslation } from "react-i18next";
+
 import type { RoutineMetrics } from "@/lib/routines-api";
 
 type Status = RoutineMetrics["last30"][number]["status"];
@@ -23,6 +25,7 @@ interface Props {
 }
 
 export function Sparkline({ bars, maxBars = 30, className, height = "md", emptyHint = "no runs yet" }: Props) {
+	const { t } = useTranslation();
 	const slice = bars.slice(0, maxBars).reverse(); // newest on the right
 	const maxDur = Math.max(1, ...slice.map((b) => b.durationMs ?? 0));
 	const heightPx = height === "sm" ? 18 : height === "lg" ? 44 : 28;
@@ -32,7 +35,7 @@ export function Sparkline({ bars, maxBars = 30, className, height = "md", emptyH
 			<div
 				className={`flex items-end gap-[2px] ${className ?? ""}`}
 				style={{ height: heightPx }}
-				aria-label={emptyHint}
+				aria-label={emptyHint === "no runs yet" ? t("no runs yet") : emptyHint}
 			>
 				{Array.from({ length: maxBars }).map((_, i) => (
 					<div key={i} className="w-[3px] flex-1 bg-line/40" style={{ height: heightPx * 0.18 }} />
@@ -45,7 +48,7 @@ export function Sparkline({ bars, maxBars = 30, className, height = "md", emptyH
 		<div
 			className={`flex items-end gap-[2px] ${className ?? ""}`}
 			style={{ height: heightPx }}
-			aria-label={`Last ${slice.length} runs`}
+			aria-label={t("Last {{count}} runs", { count: slice.length })}
 		>
 			{/* Pad with empty bars so the sparkline always shows the same width */}
 			{Array.from({ length: Math.max(0, maxBars - slice.length) }).map((_, i) => (
@@ -59,7 +62,10 @@ export function Sparkline({ bars, maxBars = 30, className, height = "md", emptyH
 						key={i}
 						className={`w-[3px] flex-1 rounded-[1px] ${TONE[b.status]}`}
 						style={{ height: h }}
-						title={`${b.status} · ${b.durationMs ? Math.round(b.durationMs / 1000) + "s" : "—"}`}
+						title={t("{{status}} · {{dur}}", {
+							status: b.status,
+							dur: b.durationMs ? t("{{secs}}s", { secs: Math.round(b.durationMs / 1000) }) : "—",
+						})}
 					/>
 				);
 			})}

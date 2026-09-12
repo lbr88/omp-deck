@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { BridgeLogsResponse, BridgeName, ListBridgesResponse } from "@omp-deck/protocol";
 
 import type { BridgeSupervisor } from "./bridge-supervisor.ts";
+import i18n from "./i18n";
 import { logger } from "./log.ts";
 
 const log = logger("routes:bridges");
@@ -22,13 +23,13 @@ export function buildBridgesRouter(supervisor: BridgeSupervisor): Hono {
 
 	app.get("/bridges/:name", (c) => {
 		const name = parseBridgeName(c.req.param("name"));
-		if (!name) return c.json({ error: "unknown bridge" }, 404);
+		if (!name) return c.json({ error: i18n.t("unknown bridge") }, 404);
 		return c.json(supervisor.get(name));
 	});
 
 	app.post("/bridges/:name/start", async (c) => {
 		const name = parseBridgeName(c.req.param("name"));
-		if (!name) return c.json({ error: "unknown bridge" }, 404);
+		if (!name) return c.json({ error: i18n.t("unknown bridge") }, 404);
 		try {
 			return c.json(await supervisor.start(name));
 		} catch (err) {
@@ -39,7 +40,7 @@ export function buildBridgesRouter(supervisor: BridgeSupervisor): Hono {
 
 	app.post("/bridges/:name/stop", async (c) => {
 		const name = parseBridgeName(c.req.param("name"));
-		if (!name) return c.json({ error: "unknown bridge" }, 404);
+		if (!name) return c.json({ error: i18n.t("unknown bridge") }, 404);
 		try {
 			return c.json(await supervisor.stop(name));
 		} catch (err) {
@@ -50,7 +51,7 @@ export function buildBridgesRouter(supervisor: BridgeSupervisor): Hono {
 
 	app.post("/bridges/:name/restart", async (c) => {
 		const name = parseBridgeName(c.req.param("name"));
-		if (!name) return c.json({ error: "unknown bridge" }, 404);
+		if (!name) return c.json({ error: i18n.t("unknown bridge") }, 404);
 		try {
 			return c.json(await supervisor.restart(name));
 		} catch (err) {
@@ -61,7 +62,7 @@ export function buildBridgesRouter(supervisor: BridgeSupervisor): Hono {
 
 	app.get("/bridges/:name/logs", (c) => {
 		const name = parseBridgeName(c.req.param("name"));
-		if (!name) return c.json({ error: "unknown bridge" }, 404);
+		if (!name) return c.json({ error: i18n.t("unknown bridge") }, 404);
 		const body: BridgeLogsResponse = { name, lines: supervisor.logs(name) };
 		return c.json(body);
 	});

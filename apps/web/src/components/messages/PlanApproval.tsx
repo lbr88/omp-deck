@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, Pencil, X } from "lucide-react";
 
 import { useStore } from "@/lib/store";
@@ -29,6 +30,7 @@ import { cn } from "@/lib/utils";
  * proposal on a fresh subscribe, so a stale optimistic clear self-heals.
  */
 export function PlanApproval({ session }: { session: SessionUi }) {
+	const { t } = useTranslation();
 	const approval = session.pendingPlanApproval;
 	const respond = useStore((s) => s.respondToPlanApproval);
 
@@ -71,7 +73,7 @@ export function PlanApproval({ session }: { session: SessionUi }) {
 
 	return (
 		<section
-			aria-label="Plan ready for approval"
+			aria-label={t("Plan ready for approval")}
 			className={cn(
 				"rounded-lg border border-accent-plan/40 bg-accent-plan/[0.04] p-4",
 				"shadow-sm",
@@ -79,13 +81,13 @@ export function PlanApproval({ session }: { session: SessionUi }) {
 		>
 			<header className="mb-3 flex items-center gap-2">
 				<span className="rounded border border-accent-plan/40 bg-accent-plan/10 px-1.5 py-0.5 font-mono text-2xs uppercase tracking-meta text-accent-plan">
-					Plan ready
+					{t("Plan ready")}
 				</span>
 				<span className="truncate font-mono text-2xs text-ink-3">→ {finalPath}</span>
 			</header>
 
 			<label className="mb-3 block">
-				<span className="meta mb-1 block">Title</span>
+				<span className="meta mb-1 block">{t("Title")}</span>
 				<input
 					type="text"
 					value={title}
@@ -97,7 +99,7 @@ export function PlanApproval({ session }: { session: SessionUi }) {
 					)}
 				/>
 				<span className="meta mt-1 block text-ink-4">
-					Letters, numbers, hyphens, underscores. Spaces become hyphens.
+					{t("Letters, numbers, hyphens, underscores. Spaces become hyphens.")}
 				</span>
 			</label>
 
@@ -111,6 +113,7 @@ export function PlanApproval({ session }: { session: SessionUi }) {
 						"mb-3 w-full resize-y rounded border border-line bg-paper px-2 py-1.5 font-mono text-xs text-ink",
 						"focus:border-accent-plan/60 focus:outline-none",
 					)}
+					aria-label={t("Edit plan content")}
 				/>
 			) : (
 				<div className="mb-3 max-h-[480px] overflow-y-auto rounded border border-line bg-paper p-3">
@@ -123,10 +126,10 @@ export function PlanApproval({ session }: { session: SessionUi }) {
 					type="button"
 					onClick={reject}
 					className="inline-flex items-center gap-1 rounded border border-line bg-paper px-2.5 py-1 text-xs text-ink-2 hover:border-danger/40 hover:text-danger"
-					title="Reject the plan and exit plan mode"
+					title={t("Reject the plan and exit plan mode")}
 				>
 					<X className="h-3.5 w-3.5" />
-					Reject
+					{t("Reject")}
 				</button>
 
 				{editing ? (
@@ -135,10 +138,10 @@ export function PlanApproval({ session }: { session: SessionUi }) {
 							type="button"
 							onClick={() => approve({ withEdits: true })}
 							className="inline-flex items-center gap-1 rounded border border-accent-plan/60 bg-accent-plan/15 px-2.5 py-1 text-xs text-accent-plan hover:bg-accent-plan/25"
-							title="Save edits, approve, and execute"
+							title={t("Save edits, approve, and execute")}
 						>
 							<Check className="h-3.5 w-3.5" />
-							Save & approve
+							{t("Save & approve")}
 						</button>
 						<button
 							type="button"
@@ -148,7 +151,7 @@ export function PlanApproval({ session }: { session: SessionUi }) {
 							}}
 							className="ml-1 text-xs text-ink-3 underline-offset-2 hover:underline"
 						>
-							Discard edits
+							{t("Discard edits")}
 						</button>
 					</>
 				) : (
@@ -157,19 +160,19 @@ export function PlanApproval({ session }: { session: SessionUi }) {
 							type="button"
 							onClick={() => setEditing(true)}
 							className="inline-flex items-center gap-1 rounded border border-line bg-paper px-2.5 py-1 text-xs text-ink-2 hover:border-accent-plan/40 hover:text-accent-plan"
-							title="Edit the plan before approving"
+							title={t("Edit the plan before approving")}
 						>
 							<Pencil className="h-3.5 w-3.5" />
-							Edit
+							{t("Edit")}
 						</button>
 						<button
 							type="button"
 							onClick={() => approve({ withEdits: false })}
 							className="inline-flex items-center gap-1 rounded border border-accent-plan/60 bg-accent-plan/15 px-2.5 py-1 text-xs text-accent-plan hover:bg-accent-plan/25"
-							title="Approve and execute"
+							title={t("Approve and execute")}
 						>
 							<Check className="h-3.5 w-3.5" />
-							Approve
+							{t("Approve")}
 						</button>
 					</>
 				)}

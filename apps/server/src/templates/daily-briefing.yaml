@@ -1,5 +1,5 @@
 name: daily-briefing
-description: Every morning, summarize yesterday's deck activity into a fresh inbox capture
+description: 每天早上，将昨天的 deck 活动汇总成一条新的收件箱捕获
 trigger:
   - cron: "0 7 * * *"
   - webhook:

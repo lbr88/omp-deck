@@ -56,6 +56,7 @@ function sortByUrgencyThenUpdated<T extends { urgency?: SessionSummary["urgency"
 }
 
 export function Sidebar() {
+	const { t } = useTranslation();
 	const workspaces = useStore((s) => s.workspaces);
 	const defaultCwd = useStore((s) => s.defaultCwd);
 	const sessions = useStore((s) => s.sessions);
@@ -128,7 +129,7 @@ export function Sidebar() {
 			await createSession({ cwd: cwdInUse });
 		} catch (err) {
 			console.error(err);
-			alert(`Failed to create session: ${String(err)}`);
+			alert(t("Failed to create session: {{err}}", { err: String(err) }));
 		} finally {
 			setCreating(false);
 		}
@@ -140,7 +141,7 @@ export function Sidebar() {
 			await createSession({ cwd: cwdInUse, resumeFromPath: p });
 		} catch (err) {
 			console.error(err);
-			alert(`Failed to resume: ${String(err)}`);
+			alert(t("Failed to resume: {{err}}", { err: String(err) }));
 		} finally {
 			setCreating(false);
 		}
@@ -189,12 +190,12 @@ export function Sidebar() {
 		<div className="flex h-full min-h-0 flex-col">
 			<div className="space-y-3 px-3 py-3 border-b border-line">
 				<div className="flex items-center justify-between">
-					<div className="meta">Workspace</div>
+					<div className="meta">{t("Workspace")}</div>
 					<button
 						type="button"
 						className="text-ink-3 hover:text-ink"
 						onClick={() => void refreshWorkspaces()}
-						aria-label="Refresh workspaces"
+						aria-label={t("Refresh workspaces")}
 					>
 						<RefreshCw className="h-3 w-3" />
 					</button>
@@ -208,7 +209,7 @@ export function Sidebar() {
 					}}
 					className="field h-7 w-full px-2 font-mono text-xs"
 				>
-					<option value="">(all workspaces)</option>
+					<option value="">{t("(all workspaces)")}</option>
 					{workspaces.map((w) => (
 						<option key={w.cwd} value={w.cwd}>
 							{w.label} · {w.sessionCount}
@@ -225,7 +226,7 @@ export function Sidebar() {
 					disabled={creating || !defaultCwd}
 				>
 					<Plus className="h-3.5 w-3.5" />
-					New session
+					{t("New session")}
 				</button>
 				{workspaces.length > 0 ? (
 					<div className="flex flex-col gap-0.5">
@@ -254,12 +255,12 @@ export function Sidebar() {
 			</div>
 
 			<div className="flex items-center justify-between px-3 pt-3 pb-1">
-				<div className="meta">Sessions · {filtered.length}</div>
+				<div className="meta">{t("Sessions")} · {filtered.length}</div>
 				<button
 					type="button"
 					className="text-ink-3 hover:text-ink"
 					onClick={() => void refreshSessions(selectedCwd || undefined)}
-					aria-label="Refresh sessions"
+					aria-label={t("Refresh sessions")}
 				>
 					<RefreshCw className="h-3 w-3" />
 				</button>

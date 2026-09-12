@@ -37,6 +37,12 @@ export const tasksApi = {
 			body: JSON.stringify(body),
 		});
 	},
+	assign(id: string, agentId: string | null): Promise<Task> {
+		return req<Task>(`/tasks/${encodeURIComponent(id)}/assign`, {
+			method: "POST",
+			body: JSON.stringify({ agentId }),
+		});
+	},
 	remove(id: string): Promise<{ ok: boolean }> {
 		return req(`/tasks/${encodeURIComponent(id)}`, { method: "DELETE" });
 	},

@@ -14,6 +14,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 
 import { getWebhookSecretByPath, insertAbortedRun, touchWebhookSecret } from "./db/routine-step-runs.ts";
+import i18n from "./i18n";
 import { logger } from "./log.ts";
 import type { RoutinesRunner } from "./routines-runner.ts";
 
@@ -63,7 +64,7 @@ export function buildHooksRouter(runner: RoutinesRunner): Hono {
 		const path = c.req.path; // e.g. /hooks/inbox-triager-manual
 		const record = getWebhookSecretByPath(path);
 		if (!record) {
-			return c.json({ error: "hook not registered" }, 404);
+			return c.json({ error: i18n.t("hook not registered") }, 404);
 		}
 
 		const presented = c.req.header(SIG_HEADER) ?? "";
@@ -78,7 +79,7 @@ export function buildHooksRouter(runner: RoutinesRunner): Hono {
 				abortReason: "signature_invalid",
 				error: `bad ${SIG_HEADER} on ${path}`,
 			});
-			return c.json({ error: "signature invalid" }, 401);
+			return c.json({ error: i18n.t("signature invalid") }, 401);
 		}
 
 		// Parse body as JSON when possible; otherwise pass through as raw string.

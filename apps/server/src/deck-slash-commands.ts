@@ -1,6 +1,7 @@
 import type { SlashCommand, Task } from "@omp-deck/protocol";
 
 import { broadcastBus } from "./broadcast-bus.ts";
+import i18n from "./i18n.ts";
 import {
 	createTask,
 	findStateByName,
@@ -31,7 +32,9 @@ export type DeckSlashResult = { kind: "consumed"; output: string };
 
 function fmtTask(t: Task): string {
 	const state = getState(t.stateId);
-	return `T-${t.displayId}: ${t.title}${state ? ` (${state.name})` : ""}`;
+	return state
+		? i18n.t("T-{{id}}: {{title}} ({{state}})", { id: t.displayId, title: t.title, state: state.name })
+		: i18n.t("T-{{id}}: {{title}}", { id: t.displayId, title: t.title });
 }
 
 function broadcastTasksChanged(): void {
@@ -41,26 +44,37 @@ function broadcastTasksChanged(): void {
 export const DECK_SLASH_COMMANDS: DeckSlashCommand[] = [
 	{
 		name: "task add",
-		description: "Create a backlog task in this workspace",
+		description: i18n.t("Create a backlog task in this workspace"),
 		argumentHint: "<title>",
 		handle(args, ctx) {
 			const title = args.trim();
-			if (!title) throw new Error("Usage: /task add <title>");
+			if (!title) throw new Error(i18n.t("Usage: /task add <title>"));
 			const created = createTask({ title, stateId: "s_backlog", cwd: ctx.cwd });
 			broadcastTasksChanged();
-			return { kind: "consumed", output: `Created T-${created.displayId}: ${created.title} (backlog)` };
+			return {
+				kind: "consumed",
+				output: i18n.t("Created T-{{id}}: {{title}} (backlog)", {
+					id: created.displayId,
+					title: created.title,
+				}),
+			};
 		},
 	},
 	{
 		name: "task list",
-		description: "List active and backlog tasks (filter by state name)",
+		description: i18n.t("List active and backlog tasks (filter by state name)"),
 		argumentHint: "[state]",
 		handle(args, ctx) {
 			const trimmed = args.trim();
 			const states = listStates();
 			const targetState = trimmed ? findStateByName(trimmed) : undefined;
 			if (trimmed && !targetState) {
-				throw new Error(`No state matches "${trimmed}". Known: ${states.map((s) => s.name).join(", ")}`);
+				throw new Error(
+					i18n.t("No state matches \"{{ref}}\". Known: {{known}}", {
+						ref: trimmed,
+						known: states.map((s) => s.name).join(", "),
+					}),
+				);
 			}
 			const all = listTasks({});
 			const scoped = all.filter((t) => t.cwd === undefined || t.cwd === ctx.cwd);
@@ -73,55 +87,59 @@ export const DECK_SLASH_COMMANDS: DeckSlashCommand[] = [
 				for (const t of items) lines.push(`  T-${t.displayId}  ${t.title}`);
 			}
 			if (lines.length === 0) {
-				return { kind: "consumed", output: "No tasks." };
+				return { kind: "consumed", output: i18n.t("No tasks.") };
 			}
 			return { kind: "consumed", output: lines.join("\n") };
 		},
 	},
 	{
 		name: "task done",
-		description: "Move a task to the done column",
+		description: i18n.t("Move a task to the done column"),
 		argumentHint: "<T-id|ULID>",
 		handle(args) {
 			const ref = args.trim();
-			if (!ref) throw new Error("Usage: /task done <T-id|ULID>");
+			if (!ref) throw new Error(i18n.t("Usage: /task done <T-id|ULID>"));
 			const existing = findTaskByDisplayOrId(ref);
-			if (!existing) throw new Error(`No task matches "${ref}".`);
+			if (!existing) throw new Error(i18n.t("No task matches \"{{ref}}\".", { ref }));
 			const target = findStateByName("done");
-			if (!target) throw new Error("No `done` state configured.");
+			if (!target) throw new Error(i18n.t("No `done` state configured."));
 			const fromState = getState(existing.stateId);
 			const moved = moveTask(existing.id, target.id, Number.POSITIVE_INFINITY);
-			if (!moved) throw new Error(`Task ${ref} disappeared.`);
+			if (!moved) throw new Error(i18n.t("Task {{ref}} disappeared.", { ref }));
 			broadcastTasksChanged();
 			return {
 				kind: "consumed",
-				output: `T-${moved.displayId}: ${fromState?.name ?? "?"} → done`,
+				output: i18n.t("T-{{id}}: {{from}} → done", { id: moved.displayId, from: fromState?.name ?? "?" }),
 			};
 		},
 	},
 	{
 		name: "task move",
-		description: "Move a task to a different column",
+		description: i18n.t("Move a task to a different column"),
 		argumentHint: "<T-id|ULID> <state>",
 		handle(args) {
 			const trimmed = args.trim();
 			const m = /^(\S+)\s+(.+)$/.exec(trimmed);
-			if (!m) throw new Error("Usage: /task move <T-id|ULID> <state>");
+			if (!m) throw new Error(i18n.t("Usage: /task move <T-id|ULID> <state>"));
 			const [, ref, stateName] = m;
 			const existing = findTaskByDisplayOrId(ref!);
-			if (!existing) throw new Error(`No task matches "${ref}".`);
+			if (!existing) throw new Error(i18n.t("No task matches \"{{ref}}\".", { ref }));
 			const target = findStateByName(stateName!);
 			if (!target) {
 				const names = listStates().map((s) => s.name).join(", ");
-				throw new Error(`No state matches "${stateName}". Known: ${names}`);
+				throw new Error(i18n.t("No state matches \"{{ref}}\". Known: {{known}}", { ref: stateName, known: names }));
 			}
 			const fromState = getState(existing.stateId);
 			const moved = moveTask(existing.id, target.id, Number.POSITIVE_INFINITY);
-			if (!moved) throw new Error(`Task ${ref} disappeared.`);
+			if (!moved) throw new Error(i18n.t("Task {{ref}} disappeared.", { ref }));
 			broadcastTasksChanged();
 			return {
 				kind: "consumed",
-				output: `T-${moved.displayId}: ${fromState?.name ?? "?"} → ${target.name}`,
+				output: i18n.t("T-{{id}}: {{from}} → {{to}}", {
+					id: moved.displayId,
+					from: fromState?.name ?? "?",
+					to: target.name,
+				}),
 			};
 		},
 	},

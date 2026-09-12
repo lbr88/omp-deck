@@ -4,6 +4,7 @@
  */
 
 import type { RoutineStep } from "@omp-deck/protocol";
+import i18n from "../../i18n.ts";
 import { render } from "../template.ts";
 import { saveState } from "../state.ts";
 import type { RunContext, StepResult } from "../types.ts";
@@ -27,7 +28,7 @@ export async function executeSetStateStep(
 		saveState(routineId, resolved);
 		return {
 			status: "success",
-			stdoutExcerpt: `persisted ${Object.keys(resolved).length} key(s)`,
+			stdoutExcerpt: i18n.t("persisted {{count}} key(s)", { count: Object.keys(resolved).length }),
 			stderrExcerpt: "",
 			json: resolved,
 			durationMs: Date.now() - startedMs,

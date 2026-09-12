@@ -4,6 +4,7 @@
  */
 
 import type { RoutineStep } from "@omp-deck/protocol";
+import i18n from "../../i18n.ts";
 import { renderString } from "../template.ts";
 import type { RunContext, StepResult } from "../types.ts";
 import { routineRunSpawnEnv } from "../../spawn-env.ts";
@@ -57,7 +58,7 @@ export async function executeRunStep(
 					status: "aborted",
 					stdoutExcerpt: stdout,
 					stderrExcerpt: stderr,
-					error: "aborted",
+					error: i18n.t("aborted"),
 					durationMs,
 				};
 			}
@@ -66,7 +67,7 @@ export async function executeRunStep(
 				status,
 				stdoutExcerpt: stdout,
 				stderrExcerpt: stderr,
-				error: status === "failed" ? `exit code ${exitCode}` : undefined,
+				error: status === "failed" ? i18n.t("exit code {{code}}", { code: exitCode }) : undefined,
 				durationMs,
 			};
 		} finally {

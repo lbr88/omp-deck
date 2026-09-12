@@ -1,5 +1,5 @@
 ---
-description: Scaffold a new omp-deck routine end-to-end — pick triggers, compose typed steps via the deck step family, gate cross-run state, validate the spec, and either save as a built-in template or POST to /api/routines. Use when the user says "build a routine that ...", "scaffold a routine", or asks how to wire a recurring deck workflow.
+description: 端到端搭建新的 omp-deck 例程——选择触发器、通过 deck 步骤族组合类型化步骤、设置跨运行状态门、校验 spec，然后保存为内置模板或 POST 到 /api/routines。当用户说"构建一个…的例程"、"搭建例程"，或询问如何编排重复性 deck 工作流时使用。
 argument-hint: <purpose, e.g. "daily summary of yesterday's PR merges">
 ---
 

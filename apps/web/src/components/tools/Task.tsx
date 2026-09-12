@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { ToolRendererProps } from "./ToolCallCard";
 import { extractResultText } from "./shared";
 import { MaybeJsonBlock } from "@/lib/code";
@@ -11,6 +12,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 export function TaskTool({ args, stream }: ToolRendererProps) {
+	const { t } = useTranslation();
 	const agent = String((args.agent as string | undefined) ?? "");
 	const tasks = Array.isArray(args.tasks) ? (args.tasks as Array<Record<string, unknown>>) : [];
 
@@ -20,13 +22,19 @@ export function TaskTool({ args, stream }: ToolRendererProps) {
 	return (
 		<div className="space-y-2">
 			<div className="font-mono text-2xs">
-				<span className="text-accent">{agent || "task"}</span>
-				<span className="text-ink-3"> · {tasks.length} subagent{tasks.length === 1 ? "" : "s"}</span>
+				<span className="text-accent">{agent || t("task")}</span>
+				<span className="text-ink-3">
+					{" "}
+					·{" "}
+					{tasks.length === 1
+						? t("1 subagent")
+						: t("{{count}} subagents", { count: tasks.length })}
+				</span>
 			</div>
 			<div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-				{tasks.map((t, i) => {
-					const id = String(t?.id ?? `task-${i}`);
-					const desc = String(t?.description ?? "");
+				{tasks.map((task, i) => {
+					const id = String(task?.id ?? `task-${i}`);
+					const desc = String(task?.description ?? "");
 					const sub = subagents[id];
 					const status = sub?.status ?? "queued";
 					return (
@@ -34,7 +42,15 @@ export function TaskTool({ args, stream }: ToolRendererProps) {
 							<div className="flex items-baseline justify-between gap-2 font-mono text-2xs">
 								<span className="truncate font-medium text-ink">{id}</span>
 								<span className={cn("shrink-0", STATUS_TONE[status] ?? "text-ink-4")}>
-									{status}
+									{status === "complete"
+										? t("complete")
+										: status === "error"
+											? t("error")
+											: status === "running"
+												? t("running")
+												: status === "queued"
+													? t("queued")
+													: status}
 								</span>
 							</div>
 							{desc ? (
@@ -53,7 +69,7 @@ export function TaskTool({ args, stream }: ToolRendererProps) {
 			{result ? (
 				<details>
 					<summary className="cursor-pointer font-mono text-2xs uppercase tracking-meta text-ink-3 hover:text-ink">
-						findings
+						{t("findings")}
 					</summary>
 					<div className="mt-1">
 						<MaybeJsonBlock text={extractResultText(result)} />

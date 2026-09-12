@@ -48,7 +48,7 @@ export interface NotificationItem {
 /** Max notifications retained in the in-app queue. Older items fall off. */
 const MAX_NOTIFICATIONS = 50;
 
-import { api } from "./api";
+import { api, authApi, onUnauthorized } from "./api";
 import { applyEvent, initSession, initSessionWithMeta } from "./reducer";
 import type { SessionUi } from "./types";
 import { WsClient, type WsStatus } from "./ws";
@@ -91,6 +91,8 @@ interface ModelUsageRow {
 interface StoreState {
 	ws: WsClient | null;
 	wsStatus: WsStatus;
+	/** True after any API 401 — the deck requires OMP_DECK_ACCESS_TOKEN. */
+	unauthorized: boolean;
 	connectionId?: string;
 
 	workspaces: WorkspaceEntry[];
@@ -256,7 +258,11 @@ interface StoreState {
 	disconnect(): void;
 	refreshWorkspaces(): Promise<void>;
 	refreshSessions(cwd?: string): Promise<void>;
-	createSession(opts: { cwd: string; resumeFromPath?: string; repoId?: string; worktreeBranch?: string }): Promise<string>;
+	createSession(opts: { cwd: string; resumeFromPath?: string; repoId?: string; worktreeBranch?: string; agentId?: string }): Promise<string>;
+	/** Exchange the deck access token for an HttpOnly session cookie. */
+	login(token: string, remember?: boolean): Promise<boolean>;
+	/** Clear the session cookie and reset the unauthorized state. */
+	logout(): Promise<void>;
 	selectSession(id: string): void;
 	sendPrompt(text: string, images?: import("@omp-deck/protocol").ImageAttachment[]): void;
 	abort(): void;
@@ -360,6 +366,7 @@ export const useStore = create<StoreState>()(
 	subscribeWithSelector((set, get) => ({
 		ws: null,
 		wsStatus: "closed",
+		unauthorized: false,
 		workspaces: [],
 		defaultCwd: "",
 		sessions: [],
@@ -399,6 +406,9 @@ export const useStore = create<StoreState>()(
 
 		async bootstrap() {
 			get().connect();
+			// Surface 401s (OMP_DECK_ACCESS_TOKEN mismatch) as a connection
+			// state so the header indicator can guide the user to Settings.
+			onUnauthorized(() => set({ unauthorized: true }));
 			await Promise.all([get().refreshWorkspaces(), get().refreshSessions()]);
 		},
 
@@ -456,6 +466,7 @@ export const useStore = create<StoreState>()(
 				...(opts.resumeFromPath ? { resumeFromPath: opts.resumeFromPath } : {}),
 				...(opts.repoId ? { repoId: opts.repoId } : {}),
 				...(opts.worktreeBranch ? { worktreeBranch: opts.worktreeBranch } : {}),
+				...(opts.agentId && opts.agentId !== "local" ? { agentId: opts.agentId } : {}),
 			});
 			// Subscribe immediately; reducer will hydrate from the `subscribed` snapshot.
 			get().ws?.send({ type: "subscribe", sessionId: created.sessionId });
@@ -466,6 +477,30 @@ export const useStore = create<StoreState>()(
 			void get().refreshSessions();
 			void get().refreshWorkspaces();
 			return created.sessionId;
+		},
+
+		async login(token: string, remember?: boolean): Promise<boolean> {
+			try {
+				await authApi.login(token, remember);
+			} catch (err) {
+				console.warn("login failed", err);
+				return false;
+			}
+			set({ unauthorized: false });
+			// The cookie now rides on every request — re-bootstrap data and
+			// reconnect the WS (its upgrade carries the cookie too).
+			if (!get().ws) get().connect();
+			await Promise.all([get().refreshWorkspaces(), get().refreshSessions()]);
+			return true;
+		},
+
+		async logout(): Promise<void> {
+			try {
+				await authApi.logout();
+			} catch (err) {
+				console.warn("logout failed", err);
+			}
+			set({ unauthorized: true });
 		},
 
 		selectSession(id: string) {
@@ -1115,7 +1150,18 @@ function handleFrame(
 				const id = frame.sessionId;
 				if (!id) return {};
 				const prev = s.sessionsById[id];
-				if (!prev) return {};
+				if (!prev) {
+					// Error for a session the store never hydrated (dead remote
+					// session, host reaped it, deck restarted): bail out of the
+					// dead active session instead of silently dropping the frame
+					// and leaving prompts no-op'ing against a ghost.
+					if (s.activeId === id) {
+						const subscribed = new Set(s.subscribed);
+						subscribed.delete(id);
+						return { activeId: undefined, subscribed };
+					}
+					return {};
+				}
 				return {
 					sessionsById: {
 						...s.sessionsById,
@@ -1126,6 +1172,9 @@ function handleFrame(
 			return;
 
 		case "heartbeat":
+			// A live heartbeat means the access token (if any) is accepted —
+			// clear the unauthorized flag so the indicator recovers without a
+			// reload after the user sets the token.
 			set(() => ({
 				heartbeat: {
 					lastReceivedAtMs: Date.now(),
@@ -1135,6 +1184,7 @@ function handleFrame(
 					buildSha: frame.buildSha,
 					version: frame.version,
 				},
+				unauthorized: false,
 			}));
 			return;
 

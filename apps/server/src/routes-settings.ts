@@ -15,6 +15,7 @@ import type {
 import type { Config } from "./config.ts";
 import { parseAutoStart, parseInt10, splitList } from "./config.ts";
 import { ENV_SCHEMA, ENV_SCHEMA_BY_KEY, type EnvSchemaEntry, validateEnvValue } from "./env-schema.ts";
+import i18n from "./i18n";
 import {
 	MANAGED_ENV_KEYS_LOADED,
 	appendEnvAudit,
@@ -39,11 +40,11 @@ export function buildSettingsRouter(
 	app.get("/settings/env", (c) => c.json(buildEnvResponse()));
 
 	app.get("/settings/env/:key", async (c) => {
-		if (c.req.query("reveal") !== "1") return c.json({ error: "reveal=1 required" }, 400);
-		if (!isLoopbackRequest(c.req.raw)) return c.json({ error: "secret reveal requires loopback" }, 403);
+		if (c.req.query("reveal") !== "1") return c.json({ error: i18n.t("reveal=1 required") }, 400);
+		if (!isLoopbackRequest(c.req.raw)) return c.json({ error: i18n.t("secret reveal requires loopback") }, 403);
 		const key = c.req.param("key");
 		const entry = ENV_SCHEMA_BY_KEY.get(key);
-		if (!entry) return c.json({ error: "unknown env key" }, 404);
+		if (!entry) return c.json({ error: i18n.t("unknown env key") }, 404);
 		const current = resolveEntry(entry);
 		await appendEnvAudit("reveal", [key]);
 		const body: RevealEnvValueResponse = {
@@ -67,15 +68,15 @@ export function buildSettingsRouter(
 		try {
 			body = (await c.req.json()) as PatchEnvSettingsRequest;
 		} catch {
-			return c.json({ error: "invalid json body" }, 400);
+			return c.json({ error: i18n.t("invalid json body") }, 400);
 		}
 		const updates = body.updates ?? {};
 		const clean: Record<string, string | null> = {};
 		for (const [key, value] of Object.entries(updates)) {
 			const entry = ENV_SCHEMA_BY_KEY.get(key);
-			if (!entry) return c.json({ error: `unknown env key: ${key}` }, 400);
+			if (!entry) return c.json({ error: i18n.t("unknown env key: {{key}}", { key }) }, 400);
 			if (value !== null && typeof value !== "string") {
-				return c.json({ error: `invalid env value for ${key}` }, 400);
+				return c.json({ error: i18n.t("invalid env value for {{key}}", { key }) }, 400);
 			}
 			if (value !== null) {
 				const err = validateEnvValue(entry, value);
@@ -96,8 +97,8 @@ export function buildSettingsRouter(
 	});
 
 	app.post("/server/restart", (c) => {
-		if (!isLoopbackRequest(c.req.raw)) return c.json({ error: "restart requires loopback" }, 403);
-		const resp = opts.restartServer?.() ?? { ok: false, message: "Restart is unavailable" };
+		if (!isLoopbackRequest(c.req.raw)) return c.json({ error: i18n.t("restart requires loopback") }, 403);
+		const resp = opts.restartServer?.() ?? { ok: false, message: i18n.t("Restart is unavailable") };
 		return c.json(resp);
 	});
 
@@ -166,7 +167,7 @@ function toResponseEntry(entry: EnvSchemaEntry): EnvEntry {
 		sensitive: entry.sensitive,
 		restartRequired: entry.restartRequired,
 		hotApply: entry.hotApply,
-		description: entry.description,
+		description: i18n.t(entry.description),
 		...(entry.options ? { options: entry.options } : {}),
 		...(entry.restartRequired ? { restartTarget: entry.restartTarget ?? "server" } : {}),
 	};
@@ -189,7 +190,7 @@ function resolveEntry(entry: EnvSchemaEntry): { source: EnvValueSource; value?: 
 }
 
 function maskValue(value: string, sensitive: boolean): string {
-	if (!value) return "unset";
+	if (!value) return i18n.t("unset");
 	if (!sensitive) return value;
 	const tail = value.slice(-4);
 	return tail ? `••••••••${tail}` : "••••••••";

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { cn, truncate } from "@/lib/utils";
 import { CopyButton } from "@/lib/CopyButton";
-
+import i18n from "@/i18n";
 export function extractResultText(result: unknown): string {
 	if (result == null) return "";
 	if (typeof result === "string") return result;
@@ -33,7 +34,7 @@ export function extractResultText(result: unknown): string {
 	try {
 		return JSON.stringify(r, null, 2);
 	} catch {
-		return "[unserializable]";
+		return i18n.t("[unserializable]");
 	}
 }
 
@@ -69,6 +70,7 @@ export function extractResultImages(
  * conversation offscreen — user can click through to the raw data URL.
  */
 export function ResultImages({ result }: { result: unknown }) {
+	const { t } = useTranslation();
 	const images = extractResultImages(result);
 	if (images.length === 0) return null;
 	return (
@@ -85,7 +87,7 @@ export function ResultImages({ result }: { result: unknown }) {
 					>
 						<img
 							src={src}
-							alt={`tool output ${i + 1}`}
+							alt={t("tool output {{n}}", { n: i + 1 })}
 							className="max-h-96 w-auto rounded border border-line"
 						/>
 					</a>
@@ -152,7 +154,7 @@ export function summarizeArg(value: unknown, max = 80): string {
 	try {
 		return truncate(JSON.stringify(value), max);
 	} catch {
-		return "[unserializable]";
+		return i18n.t("[unserializable]");
 	}
 }
 

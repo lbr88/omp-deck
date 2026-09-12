@@ -1,8 +1,10 @@
+import { useTranslation } from "react-i18next";
 import type { ToolRendererProps } from "./ToolCallCard";
 import { ArgRow, extractResultText } from "./shared";
 import { MaybeJsonBlock } from "@/lib/code";
 
 export function BrowserTool({ args, stream }: ToolRendererProps) {
+	const { t } = useTranslation();
 	const action = String((args.action as string | undefined) ?? "");
 	const url = (args.url as string | undefined) ?? undefined;
 	const name = (args.name as string | undefined) ?? "main";
@@ -21,7 +23,7 @@ export function BrowserTool({ args, stream }: ToolRendererProps) {
 			{screenshot ? (
 				<img
 					src={`data:${screenshot.mimeType};base64,${screenshot.data}`}
-					alt="screenshot"
+					alt={t("screenshot")}
 					className="max-h-96 rounded border border-line"
 				/>
 			) : null}

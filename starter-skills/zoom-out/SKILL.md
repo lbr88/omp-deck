@@ -1,6 +1,6 @@
 ---
 name: zoom-out
-description: Tell the agent to zoom out and give broader context or a higher-level perspective. Use when you're unfamiliar with a section of code or need to understand how it fits into the bigger picture.
+description: 让智能体拉远视角，给出更广的上下文或更高层的视角。当你不熟悉某段代码或需要理解它在整体中的位置时使用。
 disable-model-invocation: true
 ---
 

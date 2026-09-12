@@ -33,6 +33,7 @@ COPY package.json bun.lock* tsconfig.base.json ./
 COPY packages/protocol/package.json packages/protocol/
 COPY apps/web/package.json apps/web/
 COPY apps/server/package.json apps/server/
+COPY apps/agent-host/package.json apps/agent-host/
 COPY apps/bridges/telegram/package.json apps/bridges/telegram/
 COPY apps/gholam/package.json apps/gholam/
 RUN bun install --frozen-lockfile
@@ -62,14 +63,18 @@ COPY package.json bun.lock* tsconfig.base.json ./
 COPY packages/protocol/package.json packages/protocol/
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
+COPY apps/agent-host/package.json apps/agent-host/
 COPY apps/bridges/telegram/package.json apps/bridges/telegram/
 COPY apps/gholam/package.json apps/gholam/
 
 RUN bun install --frozen-lockfile --production
 
 # Sources for runtime (Bun executes TS natively — no transpile step).
+# apps/agent-host carries the shared session-core the server imports
+# cross-package (bridge-context, session-core, plan-mode/ext-ui bridges).
 COPY packages/protocol packages/protocol
 COPY apps/server apps/server
+COPY apps/agent-host apps/agent-host
 COPY apps/gholam apps/gholam
 
 # Built web assets.

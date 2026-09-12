@@ -11,6 +11,7 @@
  * session UX is sufficient for v1.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ServerFrame } from "@omp-deck/protocol";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -49,6 +50,7 @@ interface BodyProps {
 }
 
 function DialogBody({ sessionId, dialog, onRespond }: BodyProps): JSX.Element {
+	const { t } = useTranslation();
 	const cancel = (): void => onRespond(sessionId, dialog.dialogId, { cancelled: true });
 
 	return (
@@ -56,7 +58,7 @@ function DialogBody({ sessionId, dialog, onRespond }: BodyProps): JSX.Element {
 			<div className="flex flex-col gap-4 p-5">
 				<header className="flex flex-col gap-1">
 					<div className="font-mono text-2xs uppercase tracking-meta text-ink-3">
-						Agent question
+						{t("Agent question")}
 					</div>
 					<h2 className="text-base font-semibold text-ink">{dialog.prompt}</h2>
 					{dialog.kind === "confirm" && dialog.message ? (
@@ -116,6 +118,7 @@ interface SelectBodyProps {
  * from `omp` see the same options.
  */
 function SelectBody({ dialog, onSubmit, onCancel }: SelectBodyProps): JSX.Element {
+	const { t } = useTranslation();
 	const options = dialog.options ?? [];
 	const initial = useMemo(() => {
 		if (typeof dialog.initialIndex === "number") return options[dialog.initialIndex];
@@ -170,7 +173,7 @@ function SelectBody({ dialog, onSubmit, onCancel }: SelectBodyProps): JSX.Elemen
 							<span className="flex-1">{opt}</span>
 							{isRecommended ? (
 								<span className="font-mono text-2xs uppercase tracking-meta text-accent">
-									Recommended
+									{t("Recommended")}
 								</span>
 							) : null}
 						</label>
@@ -184,7 +187,7 @@ function SelectBody({ dialog, onSubmit, onCancel }: SelectBodyProps): JSX.Elemen
 						checked={isCustom}
 						onChange={() => setSelection(OTHER_OPTION_SENTINEL)}
 					/>
-					<span className="text-ink-3">Other (type your own)</span>
+					<span className="text-ink-3">{t("Other (type your own)")}</span>
 				</label>
 				{isCustom ? (
 					<input
@@ -192,13 +195,13 @@ function SelectBody({ dialog, onSubmit, onCancel }: SelectBodyProps): JSX.Elemen
 						type="text"
 						value={customValue}
 						onChange={(e) => setCustomValue(e.target.value)}
-						placeholder="Custom answer"
+						placeholder={t("Custom answer")}
 						className="rounded border border-line bg-paper px-2 py-1.5 font-mono text-2xs"
 					/>
 				) : null}
 			</div>
 			<DialogFooter
-				submitLabel="Send"
+				submitLabel={t("Send")}
 				disabled={isCustom ? !customValue.trim() : selection === undefined}
 				onCancel={onCancel}
 			/>
@@ -215,6 +218,7 @@ interface EditorBodyProps {
 }
 
 function EditorBody({ dialog, onSubmit, onCancel }: EditorBodyProps): JSX.Element {
+	const { t } = useTranslation();
 	const [value, setValue] = useState(dialog.prefill ?? "");
 	const taRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -251,8 +255,8 @@ function EditorBody({ dialog, onSubmit, onCancel }: EditorBodyProps): JSX.Elemen
 				className="min-h-32 resize-y rounded border border-line bg-paper px-3 py-2 font-mono text-2xs leading-relaxed text-ink focus:border-accent focus:outline-none"
 			/>
 			<DialogFooter
-				submitLabel="Send"
-				hint="Ctrl/Cmd+Enter to send"
+				submitLabel={t("Send")}
+				hint={t("Ctrl/Cmd+Enter to send")}
 				disabled={false}
 				onCancel={onCancel}
 			/>
@@ -269,6 +273,7 @@ interface InputBodyProps {
 }
 
 function InputBody({ dialog, onSubmit, onCancel }: InputBodyProps): JSX.Element {
+	const { t } = useTranslation();
 	const [value, setValue] = useState("");
 	return (
 		<form
@@ -288,7 +293,7 @@ function InputBody({ dialog, onSubmit, onCancel }: InputBodyProps): JSX.Element 
 				// biome-ignore lint/a11y/noAutofocus: modal opens for explicit user attention
 				autoFocus
 			/>
-			<DialogFooter submitLabel="Send" disabled={!value.trim()} onCancel={onCancel} />
+			<DialogFooter submitLabel={t("Send")} disabled={!value.trim()} onCancel={onCancel} />
 		</form>
 	);
 }
@@ -301,13 +306,14 @@ interface ConfirmBodyProps {
 }
 
 function ConfirmBody({ onConfirm, onDeny }: ConfirmBodyProps): JSX.Element {
+	const { t } = useTranslation();
 	return (
 		<div className="flex justify-end gap-2 border-t border-line pt-3">
 			<Button variant="ghost" onClick={onDeny}>
-				No
+				{t("No")}
 			</Button>
 			<Button variant="primary" onClick={onConfirm}>
-				Yes
+				{t("Yes")}
 			</Button>
 		</div>
 	);
@@ -323,12 +329,13 @@ interface FooterProps {
 }
 
 function DialogFooter({ submitLabel, disabled, onCancel, hint }: FooterProps): JSX.Element {
+	const { t } = useTranslation();
 	return (
 		<div className="flex items-center justify-between gap-2 border-t border-line pt-3">
 			{hint ? <span className="font-mono text-2xs text-ink-3">{hint}</span> : <span />}
 			<div className="flex gap-2">
 				<Button variant="ghost" type="button" onClick={onCancel}>
-					Cancel
+					{t("Cancel")}
 				</Button>
 				<Button variant="primary" type="submit" disabled={disabled}>
 					{submitLabel}

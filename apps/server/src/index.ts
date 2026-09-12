@@ -3,13 +3,22 @@
 // own docblock for the full rationale and shape.
 import "./silence-python.ts";
 import { loadManagedEnvIntoProcess } from "./env-store.ts";
+import { applyDeckEnv } from "./i18n.ts";
 
 loadManagedEnvIntoProcess();
+// .env may carry OMP_DECK_LANG; re-apply after env load so server messages
+// (API errors, env descriptions, notification templates) match the deck config.
+applyDeckEnv();
 
 import type { Server, ServerWebSocket } from "bun";
 import * as path from "node:path";
 
+import { isSessionAuthed } from "./routes-auth-session.ts";
 import { InProcessAgentBridge } from "./bridge/in-process.ts";
+import { MultiAgentBridge } from "./bridge/multi.ts";
+import { setBridgeContext } from "../../agent-host/src/bridge/bridge-context.ts";
+import { loadMachines } from "./machines.ts";
+import i18n from "./i18n.ts";
 import { RoutinesRunner } from "./routines-runner.ts";
 import { closeDb, openDb } from "./db/index.ts";
 import { loadConfig } from "./config.ts";
@@ -169,7 +178,16 @@ async function main(): Promise<void> {
 	notificationService.register(new WebPushChannel());
 
 
-	const bridge = new InProcessAgentBridge({
+	// Route the shared session-core modules (session-core / plan-mode-bridge /
+	// ext-ui-bridge) through the deck's own i18n + logger, so deck behavior is
+	// identical to the pre-extraction code. The remote agent-host extension
+	// never calls this and runs on the built-in English/console defaults.
+	setBridgeContext({
+		t: (key, vars) => i18n.t(key, vars ?? {}),
+		logFactory: (scope) => logger(scope),
+	});
+
+	const localBridge = new InProcessAgentBridge({
 		idleTimeoutMs: config.idleTimeoutMs,
 		autoStartCommand: config.autoStartCommand,
 	});
@@ -180,6 +198,8 @@ async function main(): Promise<void> {
 	const authConfig = initAuthConfig(config.host);
 	await bootstrapAuth(authConfig, config.host);
 
+	const machinesRegistry = loadMachines();
+	const bridge = new MultiAgentBridge({ local: localBridge, machines: machinesRegistry });
 	const routinesRunner = new RoutinesRunner();
 	routinesRunner.start();
 	// Boot the MCP health probe so the WS broadcast loop is alive before
@@ -199,7 +219,11 @@ async function main(): Promise<void> {
 		marketplaceService,
 		skillsService,
 		kbService,
-		{ restartServer: () => scheduleRestart(server) },
+		{
+			restartServer: () => scheduleRestart(server),
+			machines: { registry: machinesRegistry, bridge },
+			authSession: { getAccessToken: () => accessToken },
+		},
 	);
 
 	// Seed the canonical Anthropic marketplace on first boot. The deck ships
@@ -227,6 +251,23 @@ async function main(): Promise<void> {
 	const ws = new WsHub(bridge);
 	routinesRunner.setWsHub(ws);
 	setGholamCompanion({ bridge, wsHub: ws });
+
+	// Public-deployment gate (D1): when OMP_DECK_ACCESS_TOKEN is set, every
+	// /api and /ws request must carry `Authorization: Bearer <token>` (WS may
+	// pass `?token=` instead — the web client has no header control there).
+	// /api/health + /api/version + the session-auth endpoints stay open for
+	// liveness probes and the login flow; everything else is gated by the
+	// session cookie or Bearer header. Unset = loopback behavior unchanged.
+	const accessToken = (process.env.OMP_DECK_ACCESS_TOKEN ?? "").trim();
+	const unauthorized = (): Response =>
+		Response.json({ error: i18n.t("unauthorized") }, { status: 401 });
+	const AUTH_EXEMPT = new Set([
+		"/api/health",
+		"/api/version",
+		"/api/auth/login",
+		"/api/auth/logout",
+		"/api/auth/status",
+	]);
 
 	server = Bun.serve<ConnectionData>({
 		hostname: config.host,
@@ -274,6 +315,7 @@ async function main(): Promise<void> {
 			}
 
 			if (url.pathname === "/ws") {
+				if (!isSessionAuthed(req, accessToken)) return unauthorized();
 				const data = ws.createConnectionData();
 				const upgraded = srv.upgrade(req, { data });
 				if (upgraded) return undefined;
@@ -281,6 +323,9 @@ async function main(): Promise<void> {
 			}
 
 			if (url.pathname.startsWith("/api/")) {
+				if (!AUTH_EXEMPT.has(url.pathname) && !isSessionAuthed(req, accessToken)) {
+					return unauthorized();
+				}
 				const trimmed = new URL(req.url);
 				trimmed.pathname = url.pathname.slice(4) || "/";
 				// Track in-flight router work so safeShutdown can drain
@@ -315,6 +360,10 @@ async function main(): Promise<void> {
 			// written markdown. Stream the file straight off disk; reject path
 			// traversal the same way the SPA static handler does.
 			if (url.pathname.startsWith("/uploads/")) {
+				// With an access token configured, uploads carry data and are
+				// API-adjacent — gate them too (the session cookie rides along
+				// automatically for the browser).
+				if (!isSessionAuthed(req, accessToken)) return unauthorized();
 				return serveUpload(req, config.uploadsRoot);
 			}
 

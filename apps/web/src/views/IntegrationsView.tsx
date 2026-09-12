@@ -9,6 +9,7 @@ import { McpToolsPopover } from "@/components/mcp/McpToolsPopover";
 import { storefrontApi } from "@/lib/storefront-api";
 import { useStore, pushMcpToast } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /**
  * /integrations — one-screen MCP manager.

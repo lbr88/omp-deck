@@ -41,7 +41,8 @@ services:
     stop_signal: SIGTERM
     stop_grace_period: 10s
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8787/api/health"]
+      # The oven/bun runtime image has no wget/curl — probe with bun itself.
+      test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:8787/api/health'); if (!r.ok) process.exit(1)"]
       interval: 30s
       timeout: 5s
       retries: 3

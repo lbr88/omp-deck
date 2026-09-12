@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: Build a throwaway prototype to flesh out a design before committing to it. Routes between two branches — a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route. Use when the user wants to prototype, sanity-check a data model or state machine, mock up a UI, explore design options, or says "prototype this", "let me play with it", "try a few designs".
+description: 在投入正式开发前先构建一次性原型来验证设计。在两个分支间路由——针对状态/业务逻辑问题做一个可运行的终端应用，或用单一路由切换多个截然不同的 UI 变体。当用户想原型验证、核对数据模型或状态机、mock 一个 UI、探索设计选项，或说"原型一下"/"让我玩玩看"/"试几种设计"时使用。
 ---
 
 # Prototype

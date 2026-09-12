@@ -27,6 +27,8 @@
  * server's hot path.
  */
 
+import i18n from "../i18n.ts";
+
 const SOLO_TEMPLATE_RE = /^\s*\{\{\s*([^{}]+?)\s*\}\}\s*$/;
 const TEMPLATE_RE = /\{\{\s*([\s\S]+?)\s*\}\}/g;
 
@@ -79,7 +81,12 @@ function evalExpression(rawExpr: string, context: Record<string, unknown>): unkn
 		if (helperName === undefined) continue;
 		const helper = HELPERS[helperName];
 		if (!helper) {
-			throw new Error(`template: unknown helper '${helperName}' (known: ${Object.keys(HELPERS).join(", ")})`);
+			throw new Error(
+				i18n.t("template: unknown helper '{{helper}}' (known: {{known}})", {
+					helper: helperName,
+					known: Object.keys(HELPERS).join(", "),
+				}),
+			);
 		}
 		value = helper(value);
 	}

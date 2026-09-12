@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { ToolRendererProps } from "./ToolCallCard";
 import { extractResultText } from "./shared";
 import { CodeBlock, MaybeJsonBlock } from "@/lib/code";
@@ -9,6 +10,7 @@ interface Cell {
 }
 
 export function EvalTool({ args, stream }: ToolRendererProps) {
+	const { t } = useTranslation();
 	const cells = Array.isArray((args as { cells?: Cell[] }).cells)
 		? ((args as { cells: Cell[] }).cells)
 		: typeof (args as { code?: string }).code === "string"
@@ -32,7 +34,9 @@ export function EvalTool({ args, stream }: ToolRendererProps) {
 							<span className="text-accent">{c.language ?? "?"}</span>
 							{c.title ? <span className="ml-1.5 text-ink-3">· {c.title}</span> : null}
 						</div>
-						<span className="text-ink-4">cell {i + 1}/{cells.length}</span>
+						<span className="text-ink-4">
+							{t("cell {{n}}/{{total}}", { n: i + 1, total: cells.length })}
+						</span>
 					</div>
 					<CodeBlock code={c.code ?? ""} language={c.language} />
 				</div>
@@ -40,7 +44,7 @@ export function EvalTool({ args, stream }: ToolRendererProps) {
 			{text ? (
 				<details open>
 					<summary className="cursor-pointer font-mono text-2xs uppercase tracking-meta text-ink-3 hover:text-ink">
-						output
+						{t("output")}
 					</summary>
 					<div className="mt-1">
 						<MaybeJsonBlock text={text} />

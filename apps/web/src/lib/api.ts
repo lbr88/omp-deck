@@ -21,6 +21,35 @@ import type {
 
 const BASE = "/api";
 
+/**
+ * Session-based auth: the deck's access token is exchanged for an HttpOnly
+ * session cookie at login and never touches JS-readable storage. All API
+ * calls + the WebSocket rely on the cookie the browser attaches
+ * automatically; a 401 flips the store's `unauthorized` flag which drives
+ * the login gate.
+ */
+
+type UnauthorizedListener = () => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+/** The store subscribes to surface the "unauthorized" connection state. */
+export function onUnauthorized(listener: UnauthorizedListener): () => void {
+	unauthorizedListeners.add(listener);
+	return () => {
+		unauthorizedListeners.delete(listener);
+	};
+}
+
+function notifyUnauthorized(): void {
+	for (const listener of unauthorizedListeners) {
+		try {
+			listener();
+		} catch (err) {
+			console.warn("unauthorized listener threw", err);
+		}
+	}
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	const res = await fetch(`${BASE}${path}`, {
 		...init,
@@ -29,6 +58,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 			...(init?.headers ?? {}),
 		},
 	});
+	if (res.status === 401) notifyUnauthorized();
 	if (!res.ok) {
 		let body: string;
 		try {
@@ -40,6 +70,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	}
 	return (await res.json()) as T;
 }
+
+export interface AuthStatus {
+	authenticated: boolean;
+}
+
+export const authApi = {
+	status(): Promise<AuthStatus> {
+		return request<AuthStatus>("/auth/status");
+	},
+	login(token: string, remember?: boolean): Promise<{ ok: boolean }> {
+		return request("/auth/login", {
+			method: "POST",
+			body: JSON.stringify({ token, ...(remember ? { remember: true } : {}) }),
+		});
+	},
+	logout(): Promise<{ ok: boolean }> {
+		return request("/auth/logout", { method: "POST", body: "{}" });
+	},
+};
 
 export const api = {
 	listWorkspaces(): Promise<ListWorkspacesResponse> {

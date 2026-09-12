@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, Plus, Sparkles } from "lucide-react";
 import type { SessionUrgency } from "@omp-deck/protocol";
 import type { SessionUi } from "@/lib/types";
@@ -23,6 +24,7 @@ export function ChatHeader() {
 }
 
 function Inner({ session }: { session: SessionUi }) {
+	const { t } = useTranslation();
 	const renameSession = useStore((s) => s.renameSession);
 	const createSession = useStore((s) => s.createSession);
 	const selectSession = useStore((s) => s.selectSession);
@@ -31,6 +33,12 @@ function Inner({ session }: { session: SessionUi }) {
 	const markSessionUserRenamed = useStore((s) => s.markSessionUserRenamed);
 	const defaultCwd = useStore((s) => s.defaultCwd);
 	const sessionsById = useStore((s) => s.sessionsById);
+	const sessions = useStore((s) => s.sessions);
+	const activeId = useStore((s) => s.activeId);
+	// Remote sessions carry agentName on their summary (the snapshot has no
+	// machine attribution) — surface it as a badge next to the title.
+	const activeSummary = activeId ? sessions.find((s) => s.id === activeId) : undefined;
+	const agentName = activeSummary?.agentName;
 
 	const [editing, setEditing] = useState(false);
 	const [draft, setDraft] = useState(session.sessionName ?? "");
@@ -84,7 +92,7 @@ function Inner({ session }: { session: SessionUi }) {
 				const message = err instanceof Error ? err.message : String(err);
 				// Trim the long HTTP prefix the api helper prepends.
 				const compact = message.replace(/^HTTP \d+ \/sessions\/[^:]+:\s*/, "");
-				setRenameError(compact || "Rename failed");
+				setRenameError(compact || t("Rename failed"));
 			},
 		);
 	}
@@ -141,13 +149,13 @@ function Inner({ session }: { session: SessionUi }) {
 		<div className="flex shrink-0 flex-col gap-1 border-b border-line bg-paper px-4 py-2">
 			<div className="flex min-h-7 items-center gap-2">
 			{/* Live indicator + name */}
-			<span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-label="live session" />
+			<span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-label={t("live session")} />
 			{session.planMode?.enabled ? (
 				<span
 					className="inline-flex shrink-0 items-center gap-1 rounded border border-thinking/40 bg-thinking/10 px-1.5 py-0.5 text-2xs uppercase tracking-meta text-thinking"
-					title="Plan mode — agent reads + proposes only (Shift+Tab to exit)"
+					title={t("Plan mode — agent reads + proposes only (Shift+Tab to exit)")}
 				>
-					Plan
+					{t("Plan")}
 				</span>
 			) : null}
 			{editing ? (
@@ -171,7 +179,7 @@ function Inner({ session }: { session: SessionUi }) {
 								setEditing(false);
 							}
 						}}
-						placeholder="Untitled session"
+						placeholder={t("Untitled session")}
 						aria-invalid={renameError ? true : undefined}
 						aria-describedby={renameError ? "rename-error" : undefined}
 						className={cn(
@@ -194,19 +202,28 @@ function Inner({ session }: { session: SessionUi }) {
 				<button
 					type="button"
 					onClick={() => setEditing(true)}
-					title="Click to rename"
+					title={t("Click to rename")}
 					className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-ink hover:text-accent"
 				>
-					{session.sessionName || `Untitled · ${shortId(session.sessionId)}`}
+					{session.sessionName || t("Untitled · {{id}}", { id: shortId(session.sessionId) })}
 				</button>
 			)}
+
+			{agentName ? (
+				<span
+					className="hidden h-6 shrink-0 items-center rounded-md border border-accent/40 bg-accent/10 px-1.5 font-mono text-2xs uppercase tracking-meta text-accent sm:flex"
+					title={activeSummary?.agentId}
+				>
+					{agentName}
+				</span>
+			) : null}
 
 			{session.planMode?.enabled ? (
 				<span
 					className="hidden h-6 shrink-0 items-center rounded-md border border-accent-plan/40 bg-accent-plan/10 px-1.5 font-mono text-2xs uppercase tracking-meta text-accent-plan sm:flex"
-					title="Plan mode active — agent will read + propose a plan, then await approval before execution (Shift+Tab to exit)"
+					title={t("Plan mode active — agent will read + propose a plan, then await approval before execution (Shift+Tab to exit)")}
 				>
-					plan
+					{t("plan")}
 				</span>
 			) : null}
 
@@ -222,7 +239,10 @@ function Inner({ session }: { session: SessionUi }) {
 				<button
 					type="button"
 					onClick={() => setModelOpen(true)}
-					title={`Switch model (${session.model.provider}/${session.model.id})`}
+					title={t("Switch model ({{provider}}/{{id}})", {
+						provider: session.model.provider,
+						id: session.model.id,
+					})}
 					className="hidden h-6 items-center gap-1 rounded-md border border-line bg-paper-2/60 px-2 font-mono text-2xs uppercase tracking-meta text-ink-3 hover:border-ink/30 hover:text-ink sm:flex"
 				>
 					<span className="truncate max-w-[180px]">{session.model.id}</span>
@@ -232,10 +252,10 @@ function Inner({ session }: { session: SessionUi }) {
 			{session.planMode?.enabled ? (
 				<span
 					className="flex h-6 items-center rounded-md border border-thinking/60 bg-thinking/10 px-1.5 font-mono text-2xs uppercase tracking-meta text-thinking"
-					title="Plan mode active — agent reads + proposes only. Shift+Tab to exit."
-					aria-label="Plan mode active"
+					title={t("Plan mode active — agent reads + proposes only. Shift+Tab to exit.")}
+					aria-label={t("Plan mode active")}
 				>
-					Plan
+					{t("Plan")}
 				</span>
 			) : null}
 
@@ -248,9 +268,9 @@ function Inner({ session }: { session: SessionUi }) {
 					type="button"
 					onClick={() => setSwitcherOpen((v) => !v)}
 					className="btn-ghost h-7 gap-1 px-1.5 text-xs"
-					title="Switch sessions, regenerate AI summary, set urgency"
+					title={t("Switch sessions, regenerate AI summary, set urgency")}
 				>
-					Switch
+					{t("Switch")}
 					<ChevronDown
 						className={cn("h-3 w-3 transition-transform", switcherOpen && "rotate-180")}
 					/>
@@ -270,7 +290,7 @@ function Inner({ session }: { session: SessionUi }) {
 							className="flex w-full items-center gap-2 border-b border-line px-3 py-2 text-left text-sm text-accent hover:bg-paper-3/60"
 						>
 							<Plus className="h-3.5 w-3.5" />
-							New session
+							{t("New session")}
 						</button>
 						<button
 							type="button"
@@ -297,7 +317,7 @@ function Inner({ session }: { session: SessionUi }) {
 						</button>
 						{otherSessions.length === 0 ? (
 							<div className="px-3 py-3 font-mono text-2xs text-ink-3">
-								No other live sessions.
+								{t("No other live sessions.")}
 							</div>
 						) : (
 							<ul className="py-1">
@@ -312,7 +332,8 @@ function Inner({ session }: { session: SessionUi }) {
 											className="block w-full px-3 py-1.5 text-left text-sm hover:bg-paper-3/60"
 										>
 											<div className="truncate text-ink">
-												{s.sessionName || `Untitled · ${shortId(s.sessionId)}`}
+												{s.sessionName ||
+													t("Untitled · {{id}}", { id: shortId(s.sessionId) })}
 											</div>
 											<div className="truncate font-mono text-2xs text-ink-3">
 												{shortPath(s.cwd, 48)}

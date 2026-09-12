@@ -1,20 +1,24 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Trash2, X } from "lucide-react";
-import type { Task, TaskState } from "@omp-deck/protocol";
+import type { MachineInfo, Task, TaskState } from "@omp-deck/protocol";
 import { RichEditor } from "@/components/RichEditor";
 import { cn } from "@/lib/utils";
 
 interface Props {
 	task: Task;
 	states: TaskState[];
+	machines: MachineInfo[];
 	onClose: () => void;
 	onSave: (patch: { title?: string; body?: string; stateId?: string }) => void;
+	onAssign: (agentId: string | null) => void;
 	onDelete: () => void;
 	onArchive: () => void;
 	onOpenInChat: () => void;
 }
 
-export function TaskDrawer({ task, states, onClose, onSave, onDelete, onArchive, onOpenInChat }: Props) {
+export function TaskDrawer({ task, states, machines, onClose, onSave, onAssign, onDelete, onArchive, onOpenInChat }: Props) {
+	const { t } = useTranslation();
 	const [title, setTitle] = useState(task.title);
 	const [body, setBody] = useState(task.body);
 	const [stateId, setStateId] = useState(task.stateId);
@@ -67,7 +71,7 @@ export function TaskDrawer({ task, states, onClose, onSave, onDelete, onArchive,
 						setDirty(true);
 					}}
 					onBlur={maybeSave}
-					placeholder="Untitled"
+					placeholder={t("Untitled")}
 					className="flex-1 bg-transparent text-base font-medium text-ink placeholder:text-ink-4 focus:outline-none"
 				/>
 				<button
@@ -77,7 +81,7 @@ export function TaskDrawer({ task, states, onClose, onSave, onDelete, onArchive,
 						onClose();
 					}}
 					className="btn-ghost h-7 w-7 p-0"
-					aria-label="Close"
+					aria-label={t("Close")}
 				>
 					<X className="h-4 w-4" />
 				</button>
@@ -85,7 +89,7 @@ export function TaskDrawer({ task, states, onClose, onSave, onDelete, onArchive,
 
 			<div className="border-b border-line px-3 py-2">
 				<div className="flex items-center gap-2 font-mono text-2xs">
-					<span className="text-ink-3">state</span>
+					<span className="text-ink-3">{t("state")}</span>
 					<select
 						value={stateId}
 						onChange={(e) => {
@@ -102,8 +106,25 @@ export function TaskDrawer({ task, states, onClose, onSave, onDelete, onArchive,
 						))}
 					</select>
 					<span className="ml-auto text-ink-4">
-						updated {new Date(task.updatedAt).toLocaleString()}
+						{t("updated {{date}}", { date: new Date(task.updatedAt).toLocaleString() })}
 					</span>
+				</div>
+				<div className="mt-1 flex items-center gap-2 font-mono text-2xs">
+					<span className="text-ink-3">{t("assigned to")}</span>
+					<select
+						value={task.assignedAgent ?? ""}
+						onChange={(e) => onAssign(e.target.value === "" ? null : e.target.value)}
+						className="field h-6 px-2 text-xs"
+						title={t("Which agent host runs this task")}
+					>
+						<option value="">{t("(unassigned)")}</option>
+						<option value="local">{t("this machine (local)")}</option>
+						{machines.map((m) => (
+							<option key={m.id} value={m.id}>
+								{m.name} ({m.id})
+							</option>
+						))}
+					</select>
 				</div>
 			</div>
 
@@ -114,7 +135,8 @@ export function TaskDrawer({ task, states, onClose, onSave, onDelete, onArchive,
 						setBody(v);
 						setDirty(true);
 					}}
-					placeholder="Notes, acceptance criteria, links…"
+					onBlur={maybeSave}
+					placeholder={t("Notes, acceptance criteria, links…")}
 					className="h-full w-full bg-transparent px-4 py-3 text-sm text-ink placeholder:text-ink-4 focus:outline-none"
 				/>
 			</div>
@@ -122,7 +144,7 @@ export function TaskDrawer({ task, states, onClose, onSave, onDelete, onArchive,
 			<div className="flex shrink-0 items-center justify-between gap-2 border-t border-line bg-paper px-3 py-2">
 				<button type="button" onClick={onDelete} className="btn-ghost text-danger text-xs">
 					<Trash2 className="h-3.5 w-3.5" />
-					Delete
+					{t("Delete")}
 				</button>
 				<div className="flex items-center gap-1.5">
 					<button
@@ -133,7 +155,7 @@ export function TaskDrawer({ task, states, onClose, onSave, onDelete, onArchive,
 						}}
 						className="btn-ghost text-xs"
 					>
-						{task.archivedAt ? "Unarchive" : "Archive"}
+						{task.archivedAt ? t("Unarchive") : t("Archive")}
 					</button>
 					<button
 						type="button"
@@ -143,7 +165,7 @@ export function TaskDrawer({ task, states, onClose, onSave, onDelete, onArchive,
 						}}
 						className={cn("btn-primary text-xs")}
 					>
-						Open in chat
+						{t("Open in chat")}
 					</button>
 				</div>
 			</div>

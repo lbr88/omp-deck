@@ -9,6 +9,7 @@
  */
 
 import type { RoutineStep } from "@omp-deck/protocol";
+import i18n from "../../i18n.ts";
 import { INTERNAL_AUTH_HEADERS, mintInternalToken } from "../internal-auth.ts";
 import { render, renderString } from "../template.ts";
 import type { RunContext, StepResult } from "../types.ts";
@@ -77,7 +78,7 @@ export async function executeHttpStep(
 			try {
 				json = JSON.parse(text);
 			} catch (err) {
-				parseError = `expect_json parse failure: ${String(err)}`;
+				parseError = i18n.t("expect_json parse failure: {{detail}}", { detail: String(err) });
 			}
 		}
 
@@ -86,7 +87,10 @@ export async function executeHttpStep(
 				status: "failed",
 				stdoutExcerpt: clipped,
 				stderrExcerpt: "",
-				error: `HTTP ${resp.status} ${resp.statusText}`,
+				error: i18n.t("HTTP {{status}} {{statusText}}", {
+					status: resp.status,
+					statusText: resp.statusText,
+				}),
 				json,
 				durationMs,
 			};

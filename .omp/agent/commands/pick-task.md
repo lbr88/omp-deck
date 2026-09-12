@@ -1,5 +1,5 @@
 ---
-description: Pick the next active task from the omp-deck kanban and start working
+description: 从 omp-deck 看板挑选下一个活动任务并开始工作
 argument-hint: [top|t_<id>|<title-fragment>]
 ---
 You are about to start work on an omp-deck task. Discover before you act — do not move tasks around the kanban yourself.

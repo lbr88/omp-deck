@@ -5,7 +5,7 @@
  * OMP folders before the conversation moves on. Synthesizes a follow-up
  * user message with a structured "Maintenance check" prompt; the agent
  * either writes into a capture path or states the literal phrase
- * "No maintenance needed" to release the check.
+ * "无需维护" to release the check.
  *
  * Design (rewritten 2026-05-21 after "fires too often" feedback):
  *
@@ -15,7 +15,7 @@
  *
  *     - the agent writes into a capture path (inbox/, tasks/, knowledge/,
  *       queries/, context/, reminders/, or a SKILL.md file), OR
- *     - the agent emits the literal phrase "No maintenance needed".
+ *     - the agent emits the literal phrase "无需维护".
  *
  *   Both kinds of release advance a `releaseCursor` (a tuple of branch
  *   length + wall-clock time). Once the gate fires, it records its own
@@ -65,7 +65,7 @@ import { join } from "node:path";
 
 // Marker phrase the agent uses to release the gate. Case-sensitive so casual
 // prose mentioning "no maintenance needed" doesn't suppress accidentally.
-const NO_MAINT_PHRASE = "No maintenance needed";
+const NO_MAINT_PHRASE = "无需维护";
 
 // Heading text the reminder uses. Doubles as a branch-walk marker for
 // detecting "have we already fired in this segment".
@@ -219,44 +219,44 @@ function buildReminder(): string {
 	// skills to files because no REST surface owns them.
 	const rows: [string, string][] = deckMode
 		? [
-				["Reusable insight or pattern", "→ `kb://system/<topic>.md`"],
-				["Project status changed", "→ `POST /api/inbox` with `kind: \"capture\"` describing the change; daily briefing reconciles into `kb://system/projects-hub.md`"],
-				["New task identified", "→ `POST /api/tasks`"],
-				["Question worth preserving", "→ `POST /api/inbox` with `kind: \"capture\"` (or `kind: \"investigation\"` if you intend to follow up)"],
-				["Feature idea / future project", "→ `POST /api/inbox` with `kind: \"idea\"`"],
-				["Decision needed", "→ `POST /api/inbox` with `kind: \"decision\"`"],
-				["Bug to investigate", "→ `POST /api/inbox` with `kind: \"investigation\"`"],
-				["Quick unsorted capture", "→ `POST /api/inbox` with `kind: \"capture\"`"],
-				["New capability learned", "→ create a skill at `.omp/skills/<name>/SKILL.md` (project) or `~/.omp/agent/skills/<name>/SKILL.md` (user)"],
+				["可复用的洞察或模式", "→ `kb://system/<topic>.md`"],
+				["项目状态已变化", "→ `POST /api/inbox`，`kind: \"capture\"`，描述变化；每日简报会归入 `kb://system/projects-hub.md`"],
+				["发现新任务", "→ `POST /api/tasks`"],
+				["值得保留的问题", "→ `POST /api/inbox`，`kind: \"capture\"`（若打算跟进则用 `kind: \"investigation\"`）"],
+				["功能想法 / 未来项目", "→ `POST /api/inbox`，`kind: \"idea\"`"],
+				["需要决策", "→ `POST /api/inbox`，`kind: \"decision\"`"],
+				["需要调查的 Bug", "→ `POST /api/inbox`，`kind: \"investigation\"`"],
+				["快速未分类捕获", "→ `POST /api/inbox`，`kind: \"capture\"`"],
+				["学到的新能力", "→ 在 `.omp/skills/<name>/SKILL.md`（项目级）或 `~/.omp/agent/skills/<name>/SKILL.md`（用户级）创建技能"],
 			]
 		: [
-				["Reusable insight or pattern", "→ `knowledge/<subfolder>/<topic>.md`"],
-				["Project status changed", "→ update `context/current-state.md`"],
-				["New task identified", "→ `tasks/<name>.md`"],
-				["Question worth preserving", "→ `queries/<question>.md`"],
-				["Feature idea / future project", "→ `inbox/ideas/<item>.md`"],
-				["Decision needed", "→ `inbox/decisions/<item>.md`"],
-				["Bug to investigate", "→ `inbox/investigations/<item>.md`"],
-				["Quick unsorted capture", "→ `inbox/captures/<item>.md`"],
-				["New capability learned", "→ create a skill at `.omp/skills/<name>/SKILL.md` (project) or `~/.omp/agent/skills/<name>/SKILL.md` (user)"],
+				["可复用的洞察或模式", "→ `knowledge/<subfolder>/<topic>.md`"],
+				["项目状态已变化", "→ 更新 `context/current-state.md`"],
+				["发现新任务", "→ `tasks/<name>.md`"],
+				["值得保留的问题", "→ `queries/<question>.md`"],
+				["功能想法 / 未来项目", "→ `inbox/ideas/<item>.md`"],
+				["需要决策", "→ `inbox/decisions/<item>.md`"],
+				["需要调查的 Bug", "→ `inbox/investigations/<item>.md`"],
+				["快速未分类捕获", "→ `inbox/captures/<item>.md`"],
+				["学到的新能力", "→ 在 `.omp/skills/<name>/SKILL.md`（项目级）或 `~/.omp/agent/skills/<name>/SKILL.md`（用户级）创建技能"],
 			];
 
 	const releaseClause = deckMode
-		? "invoking any of the REST endpoints below (or writing to one of the listed paths)"
-		: "writing to any of the paths below";
+		? "调用下方任一 REST 端点（或写入所列路径之一）"
+		: "写入下方任一路径";
 
 	return [
 		"---",
 		"",
 		FIRE_MARKER,
 		"",
-		`Did this segment of work produce any of the signals below? Capture **now** — ${releaseClause} releases this check automatically. If nothing applies, state the literal phrase "${NO_MAINT_PHRASE}" to release.`,
+		`本段工作是否产生了以下任一信号？请**立即**捕获 — ${releaseClause} 会自动解除此检查。如果没有适用的信号，请说出字面短语"${NO_MAINT_PHRASE}"以解除。`,
 		"",
-		"| Signal | Action if present |",
+		"| 信号 | 若有则采取的动作 |",
 		"|--------|-------------------|",
 		...rows.map(([signal, action]) => `| ${signal} | ${action} |`),
 		"",
-		"Be aggressive about capture — lost insights are unrecoverable.",
+		"请积极捕获 — 丢失的洞察无法恢复。",
 		"",
 		"---",
 	].join("\n");

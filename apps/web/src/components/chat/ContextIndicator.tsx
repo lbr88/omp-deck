@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ContextUsage } from "@omp-deck/protocol";
 import { api } from "@/lib/api";
 import { RichEditor } from "@/components/RichEditor";
@@ -21,6 +22,7 @@ interface Props {
  * rather than misleading the user with a 0%.
  */
 export function ContextIndicator({ sessionId, usage }: Props) {
+	const { t } = useTranslation();
 	const [open, setOpen] = useState(false);
 	const [focus, setFocus] = useState("");
 	const [submitting, setSubmitting] = useState(false);
@@ -77,8 +79,12 @@ export function ContextIndicator({ sessionId, usage }: Props) {
 				onClick={() => setOpen((v) => !v)}
 				title={
 					known
-						? `Context window: ${formatTokens(tokens)} / ${formatTokens(usage.contextWindow)} tokens (${percent.toFixed(1)}%)`
-						: "Context usage calculating — next turn will refresh"
+						? t("Context window: {{used}} / {{total}} tokens ({{pct}}%)", {
+								used: formatTokens(tokens),
+								total: formatTokens(usage.contextWindow),
+								pct: percent.toFixed(1),
+							})
+						: t("Context usage calculating — next turn will refresh")
 				}
 				className={cn(
 					"flex h-7 shrink-0 items-center gap-1.5 rounded px-1.5 text-2xs font-mono",
@@ -95,27 +101,33 @@ export function ContextIndicator({ sessionId, usage }: Props) {
 					/>
 				</span>
 				<span className={cn(textColor, "tabular-nums")}>
-					{known ? `${Math.round(percent)}%` : "—%"}
+					{known ? `${Math.round(percent)}%` : t("—%")}
 				</span>
 				<span className="text-ink-4">·</span>
 				<span className="text-ink-3 tabular-nums">
-					{known ? `${formatTokens(tokens)} TOK` : ""}
+					{known ? t("{{tokens}} TOK", { tokens: formatTokens(tokens) }) : ""}
 				</span>
 			</button>
 
 			{open ? (
 				<div className="absolute right-0 top-full z-30 mt-1 w-80 rounded-md border border-line bg-paper-2 p-3 shadow-[0_8px_24px_-8px_rgba(26,24,20,0.25)]">
-					<div className="meta mb-1">Context window</div>
+					<div className="meta mb-1">{t("Context window")}</div>
 					<div className="mb-2 font-mono text-xs text-ink-2 tabular-nums">
 						{known
-							? `${formatTokens(tokens)} of ${formatTokens(usage.contextWindow)} tokens — ${percent.toFixed(1)}%`
-							: `${formatTokens(usage.contextWindow)} window · usage refreshes after next turn`}
+							? t("{{used}} of {{total}} tokens — {{pct}}%", {
+									used: formatTokens(tokens),
+									total: formatTokens(usage.contextWindow),
+									pct: percent.toFixed(1),
+								})
+							: t("{{total}} window · usage refreshes after next turn", {
+									total: formatTokens(usage.contextWindow),
+								})}
 					</div>
-					<label className="meta mb-1 block">Focus (optional)</label>
+					<label className="meta mb-1 block">{t("Focus (optional)")}</label>
 					<RichEditor
 						value={focus}
 						onChange={(v) => setFocus(v)}
-						placeholder="e.g. keep details of the deck routes-fs.ts work"
+						placeholder={t("e.g. keep details of the deck routes-fs.ts work")}
 						rows={2}
 						disableRichText
 						className={cn(
@@ -124,7 +136,7 @@ export function ContextIndicator({ sessionId, usage }: Props) {
 						)}
 					/>
 					<div className="mt-1 font-mono text-2xs text-ink-3">
-						The agent will preserve anything you describe here while compacting the rest.
+						{t("The agent will preserve anything you describe here while compacting the rest.")}
 					</div>
 					{error ? (
 						<div className="mt-2 rounded border border-danger/30 bg-danger/10 px-2 py-1 font-mono text-2xs text-danger">
@@ -138,7 +150,7 @@ export function ContextIndicator({ sessionId, usage }: Props) {
 							className="btn-ghost h-7 px-2 text-xs"
 							disabled={submitting}
 						>
-							Cancel
+							{t("Cancel")}
 						</button>
 						<button
 							type="button"
@@ -146,7 +158,7 @@ export function ContextIndicator({ sessionId, usage }: Props) {
 							className="btn-primary h-7 px-3 text-xs"
 							disabled={submitting}
 						>
-							{submitting ? "Compacting…" : "Compact now"}
+							{submitting ? t("Compacting…") : t("Compact now")}
 						</button>
 					</div>
 				</div>

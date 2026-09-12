@@ -14,6 +14,7 @@ import type {
 	RoutineRun,
 } from "@omp-deck/protocol";
 
+import i18n from "../i18n.ts";
 import { getDb, id, nowIso } from "./index.ts";
 
 interface RoutineRow {
@@ -170,7 +171,7 @@ export function createRoutine(input: {
 			now,
 		);
 	const out = getRoutine(routineId);
-	if (!out) throw new Error("createRoutine failed");
+	if (!out) throw new Error(i18n.t("createRoutine failed"));
 	return out;
 }
 
@@ -241,7 +242,7 @@ export function createV1Routine(input: {
 			1,
 		);
 	const out = getRoutine(routineId);
-	if (!out) throw new Error("createV1Routine failed");
+	if (!out) throw new Error(i18n.t("createV1Routine failed"));
 	return out;
 }
 
@@ -385,7 +386,7 @@ export function startRun(routineId: string, trigger: RoutineRun["trigger"]): Rou
 		)
 		.run(runId, routineId, startedAt, trigger);
 	const out = getRun(runId);
-	if (!out) throw new Error("startRun failed");
+	if (!out) throw new Error(i18n.t("startRun failed"));
 	return out;
 }
 

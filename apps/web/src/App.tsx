@@ -5,13 +5,16 @@ import { useNotificationBridge } from "./lib/notifications";
 import { NotificationToast } from "./components/NotificationToast";
 import { NotificationPermissionBanner } from "./components/NotificationPermissionBanner";
 import { AuthGate } from "./components/auth/AuthGate";
+import { AuthGate as AccessTokenGate } from "./components/AuthGate";
 import { FocusModeProvider } from "./components/focus/FocusModeProvider";
 import { FocusStrip } from "./components/focus/FocusStrip";
 
 export function App() {
 	return (
 		<AuthGate>
-			<AuthedApp />
+			<AccessTokenGate>
+				<AuthedApp />
+			</AccessTokenGate>
 		</AuthGate>
 	);
 }

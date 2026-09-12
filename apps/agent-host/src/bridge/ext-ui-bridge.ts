@@ -29,9 +29,9 @@ import type {
 } from "@oh-my-pi/pi-coding-agent/extensibility/extensions";
 import type { ExtUiDialogResponse, ServerFrame } from "@omp-deck/protocol";
 
-import { logger } from "../log.ts";
+import { bridgeLog, bridgeT } from "./bridge-context.ts";
 
-const log = logger("bridge:ext-ui");
+const log = bridgeLog("bridge:ext-ui");
 
 type DialogOpenFrame = Extract<ServerFrame, { type: "ext_ui_dialog_open" }>;
 type DialogCancelFrame = Extract<ServerFrame, { type: "ext_ui_dialog_cancel" }>;
@@ -47,6 +47,16 @@ interface PendingDialog {
 
 /** Listener over server-bound UI frames for one session. */
 type FrameListener = (frame: DialogOpenFrame | DialogCancelFrame) => void;
+
+/** SDK 17 select options may be `{label, description}` objects — reduce to label. */
+function normalizeSelectOption(option: unknown): string {
+	if (typeof option === "string") return option;
+	if (option && typeof option === "object" && "label" in option) {
+		const label = option.label;
+		if (typeof label === "string") return label;
+	}
+	return String(option);
+}
 
 /**
  * Per-session implementation of `ExtensionUIContext`. Only the dialog-shaped
@@ -126,7 +136,12 @@ export class ExtensionUIBridge implements ExtensionUIContext {
 		options: string[],
 		dialogOptions?: ExtensionUIDialogOptions,
 	): Promise<string | undefined> {
-		const fields: Pick<DialogOpenFrame, "options"> = { options };
+		// SDK 17+ passes `ExtensionUISelectOption` objects ({label, description})
+		// at runtime despite the string[] signature; the wire contract is plain
+		// strings and the SDK matches the choice back by label — normalize so
+		// the deck UI never receives objects.
+		const normalized = options.map(normalizeSelectOption);
+		const fields: Pick<DialogOpenFrame, "options"> = { options: normalized };
 		return this.openDialog<string | undefined>(
 			{ kind: "select", prompt, ...fields },
 			dialogOptions,
@@ -240,7 +255,7 @@ export class ExtensionUIBridge implements ExtensionUIContext {
 		// Extensions that read `ctx.ui.theme` in the deck context need to be
 		// updated; rather than ship a fake Theme that lies about color codes,
 		// throw so the caller knows it's unsupported here.
-		throw new Error("ExtensionUIBridge.theme is not available in deck mode");
+		throw new Error(bridgeT("ExtensionUIBridge.theme is not available in deck mode"));
 	}
 
 	getAllThemes(): Promise<{ name: string; path: string | undefined }[]> {
@@ -252,7 +267,7 @@ export class ExtensionUIBridge implements ExtensionUIContext {
 	}
 
 	setTheme(_theme: unknown): Promise<{ success: boolean; error?: string }> {
-		return Promise.resolve({ success: false, error: "Theme switching is not supported in deck mode" });
+		return Promise.resolve({ success: false, error: bridgeT("Theme switching is not supported in deck mode") });
 	}
 
 	getToolsExpanded(): boolean {

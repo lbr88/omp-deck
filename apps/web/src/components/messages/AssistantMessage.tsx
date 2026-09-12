@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { AssistantMsg, ToolCallStream } from "@/lib/types";
 import { Markdown } from "@/lib/markdown";
 import { formatCost, formatDurationMs, formatTokens } from "@/lib/utils";
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function AssistantMessage({ msg, toolCalls }: Props) {
+	const { t } = useTranslation();
 	const lastBlockIdx = msg.blocks.length - 1;
 
 	return (
@@ -17,7 +19,7 @@ export function AssistantMessage({ msg, toolCalls }: Props) {
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-2xs uppercase tracking-meta text-ink-3">
 				<span className="text-ink-2">omp</span>
 				{msg.model ? <span className="text-ink-4 normal-case tracking-normal">{msg.model}</span> : null}
-				{msg.isStreaming ? <span className="text-accent">· streaming</span> : null}
+				{msg.isStreaming ? <span className="text-accent">· {t("streaming")}</span> : null}
 				{msg.stopReason && !msg.isStreaming ? (
 					<span className={msg.stopReason === "stop" ? "text-ink-4" : "text-warn"}>
 						· {msg.stopReason}
@@ -25,7 +27,8 @@ export function AssistantMessage({ msg, toolCalls }: Props) {
 				) : null}
 				{msg.usage?.totalTokens ? (
 					<span className="text-ink-4">
-						· {formatTokens(msg.usage.totalTokens)} tok · {formatCost(msg.usage.cost)}
+						· {t("{{count}} tok", { count: formatTokens(msg.usage.totalTokens) })} ·{" "}
+						{formatCost(msg.usage.cost)}
 					</span>
 				) : null}
 				{msg.durationMs ? (
@@ -60,7 +63,7 @@ export function AssistantMessage({ msg, toolCalls }: Props) {
 						return (
 							<ThinkingBlock
 								key={i}
-								text="(redacted thinking)"
+								text={t("(redacted thinking)")}
 								streaming={false}
 								redacted
 							/>

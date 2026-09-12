@@ -9,6 +9,7 @@ import { cn, truncate } from "@/lib/utils";
 interface Props {
 	task: Task;
 	onOpen: (task: Task) => void;
+	machineName?: string;
 }
 
 /**
@@ -17,7 +18,7 @@ interface Props {
  * will land; the lifted card itself is rendered by the DragOverlay in
  * TasksView. The two modes share `<TaskCardBody>` so the visual is identical.
  */
-export function TaskCard({ task, onOpen }: Props) {
+export function TaskCard({ task, onOpen, machineName }: Props) {
 	const {
 		attributes,
 		listeners,
@@ -69,7 +70,7 @@ export function TaskCard({ task, onOpen }: Props) {
 			tabIndex={0}
 			className="group"
 		>
-			<TaskCardBody task={task} lifted={false} />
+			<TaskCardBody task={task} lifted={false} machineName={machineName} />
 		</div>
 	);
 }
@@ -78,7 +79,7 @@ export function TaskCard({ task, onOpen }: Props) {
  * Visual body of the card. Reused by the DragOverlay so the lifted version is
  * identical in shape; only the chrome differs (shadow, scale, rotation).
  */
-export function TaskCardBody({ task, lifted }: { task: Task; lifted: boolean }) {
+export function TaskCardBody({ task, lifted, machineName }: { task: Task; lifted: boolean; machineName?: string }) {
 	// Surface the most recent activity timestamp — body edits bump updatedAt
 	// without disturbing the per-column sort, which is exactly the signal a
 	// glance at the card should reveal.
@@ -112,6 +113,14 @@ export function TaskCardBody({ task, lifted }: { task: Task; lifted: boolean }) 
 					>
 						<Zap className="h-2.5 w-2.5" />
 						{task.energyTag}
+					</span>
+				) : null}
+				{machineName ? (
+					<span
+						className="rounded border border-accent/40 bg-accent/10 px-1 py-px text-accent"
+						title={task.assignedAgent ?? undefined}
+					>
+						{machineName}
 					</span>
 				) : null}
 				{brief ? (

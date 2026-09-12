@@ -15,6 +15,7 @@ import type { SessionUi } from "@/lib/types";
  * so the user never has to open the sidebar just to start working.
  */
 export function SessionPicker() {
+	const { t } = useTranslation();
 	const session = useStore(selectActiveSession);
 	const workspaces = useStore((s) => s.workspaces);
 	const defaultCwd = useStore((s) => s.defaultCwd);
@@ -48,13 +49,18 @@ export function SessionPicker() {
 		return { live, persisted };
 	}, [sessions, sessionsById]);
 
+	// SessionUi snapshots carry no machine attribution; the summaries do.
+	function liveAgentName(sessionId: string): string | undefined {
+		return sessions.find((s) => s.id === sessionId)?.agentName;
+	}
+
 	async function startFresh(): Promise<void> {
 		setBusy(true);
 		try {
 			await createSession({ cwd: cwdInUse });
 		} catch (err) {
 			console.error(err);
-			alert(`Failed to create session: ${String(err)}`);
+			alert(t("Failed to create session: {{error}}", { error: String(err) }));
 		} finally {
 			setBusy(false);
 		}
@@ -66,7 +72,7 @@ export function SessionPicker() {
 			await createSession({ cwd: cwdInUse, resumeFromPath: s.path });
 		} catch (err) {
 			console.error(err);
-			alert(`Failed to resume: ${String(err)}`);
+			alert(t("Failed to resume: {{error}}", { error: String(err) }));
 		} finally {
 			setBusy(false);
 		}
@@ -82,12 +88,12 @@ export function SessionPicker() {
 				<WelcomeTaskTile />
 				<div className="mb-6 flex items-baseline gap-2">
 					<MessagesSquare className="h-5 w-5 text-ink-3" />
-					<h1 className="text-lg font-semibold text-ink">Start a session</h1>
+					<h1 className="text-lg font-semibold text-ink">{t("Start a session")}</h1>
 				</div>
 
 				{/* Primary action — workspace picker + new session */}
 				<div className="rounded-lg border border-line bg-paper-2 p-4 shadow-[0_1px_2px_rgba(26,24,20,0.04)]">
-					<div className="meta mb-1.5">Workspace</div>
+					<div className="meta mb-1.5">{t("Workspace")}</div>
 					<select
 						value={selectedCwd}
 						onChange={(e) => {
@@ -96,7 +102,7 @@ export function SessionPicker() {
 						}}
 						className="field h-8 w-full px-2 font-mono text-xs"
 					>
-						<option value="">{`(default) ${defaultCwd}`}</option>
+						<option value="">{t("(default) {{cwd}}", { cwd: defaultCwd })}</option>
 						{workspaces
 							.filter((w) => w.cwd !== defaultCwd)
 							.map((w) => (
@@ -115,7 +121,7 @@ export function SessionPicker() {
 						className="btn-primary mt-3 h-9 w-full text-sm"
 					>
 						<Plus className="h-4 w-4" />
-						New session
+						{t("New session")}
 					</button>
 					<NewSessionModal
 						open={modalOpen}
@@ -129,7 +135,7 @@ export function SessionPicker() {
 				{/* Live sessions in this server process — usually empty on a fresh load. */}
 				{recent.live.length > 0 ? (
 					<section className="mt-6">
-						<div className="meta mb-2">Live</div>
+						<div className="meta mb-2">{t("Live")}</div>
 						<ul className="space-y-1">
 							{recent.live.map((s) => (
 								<li key={s.sessionId}>
@@ -156,7 +162,7 @@ export function SessionPicker() {
 				{/* Persisted sessions on disk — top 6 newest. */}
 				{recent.persisted.length > 0 ? (
 					<section className="mt-6">
-						<div className="meta mb-2">Recent</div>
+						<div className="meta mb-2">{t("Recent")}</div>
 						<ul className="space-y-1">
 							{recent.persisted.map((s) => (
 								<li key={s.id}>
@@ -175,7 +181,7 @@ export function SessionPicker() {
 					</section>
 				) : recent.live.length === 0 ? (
 					<div className="mt-6 text-center font-mono text-2xs text-ink-3">
-						No previous sessions yet — start a new one above.
+						{t("No previous sessions yet — start a new one above.")}
 					</div>
 				) : null}
 			</div>
@@ -218,6 +224,7 @@ function liveSummaryFromUi(s: SessionUi): SessionSummary {
  * first display. Stays dismissed across reloads.
  */
 function OnboardingReminderTile() {
+	const { t } = useTranslation();
 	const [visible, setVisible] = useState(false);
 	useEffect(() => {
 		if (localStorage.getItem("omp-deck:onboarding-skip-toast-pending") === "1") {
@@ -232,7 +239,7 @@ function OnboardingReminderTile() {
 	return (
 		<div className="mb-4 flex items-start gap-3 rounded border border-accent/40 bg-accent/5 p-3 text-xs text-ink-2">
 			<div className="flex-1">
-				You skipped onboarding. Re-run it any time from{" "}
+				{t("You skipped onboarding. Re-run it any time from")}{" "}
 				<a href="/onboarding" className="font-medium text-accent underline">
 					Settings → Onboarding
 				</a>
@@ -242,7 +249,7 @@ function OnboardingReminderTile() {
 				type="button"
 				onClick={dismiss}
 				className="shrink-0 text-ink-3 hover:text-ink"
-				aria-label="Dismiss"
+				aria-label={t("Dismiss")}
 			>
 				×
 			</button>
@@ -258,6 +265,7 @@ function OnboardingReminderTile() {
  * this is a low-stakes hint, not a critical surface.
  */
 function WelcomeTaskTile() {
+	const { t } = useTranslation();
 	const [visible, setVisible] = useState(false);
 	useEffect(() => {
 		let cancelled = false;
@@ -287,12 +295,12 @@ function WelcomeTaskTile() {
 			<div className="flex items-center gap-2">
 				<ClipboardList className="h-4 w-4 shrink-0 text-accent" />
 				<span>
-					<span className="font-medium">T-1 Welcome to omp·deck</span> is waiting in
-					your kanban
+					<span className="font-medium">T-1 Welcome to omp·deck</span>{" "}
+					{t("is waiting in your kanban")}
 				</span>
 			</div>
 			<span className="flex shrink-0 items-center gap-1 text-2xs text-ink-3">
-				Open Tasks <ArrowRight className="h-3 w-3" />
+				{t("Open Tasks")} <ArrowRight className="h-3 w-3" />
 			</span>
 		</a>
 	);

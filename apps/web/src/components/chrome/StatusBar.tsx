@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { selectActiveSession, useStore } from "@/lib/store";
 import { useRef, useState } from "react";
 import { UpdatePill } from "./UpdatePill";
@@ -20,6 +21,7 @@ const STATE_RANK: Record<string, number> = {
 };
 
 export function StatusBar() {
+	const { t } = useTranslation();
 	const wsStatus = useStore((s) => s.wsStatus);
 	const session = useStore(selectActiveSession);
 
@@ -40,20 +42,23 @@ export function StatusBar() {
 				<>
 					<span className="text-ink-4">·</span>
 					<span className={STATUS_TONE[session.status] ?? "text-ink-3"}>
-						{session.status === "idle" ? "ready" : session.status}
+						{session.status === "idle" ? t("ready") : session.status}
 					</span>
 					{session.retry ? (
 						<>
 							<span className="text-ink-4">·</span>
 							<span className="text-warn">
-								retry {session.retry.attempt}/{session.retry.maxAttempts}
+								{t("retry {{attempt}}/{{maxAttempts}}", {
+									attempt: session.retry.attempt,
+									maxAttempts: session.retry.maxAttempts,
+								})}
 							</span>
 						</>
 					) : null}
 					{session.compaction ? (
 						<>
 							<span className="text-ink-4">·</span>
-							<span className="text-warn">compact·{session.compaction.action}</span>
+							<span className="text-warn">{t("compact")}·{session.compaction.action}</span>
 						</>
 					) : null}
 					{session.ttsr && Date.now() - session.ttsr.at < 8000 ? (

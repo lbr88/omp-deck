@@ -1,4 +1,5 @@
 import type { RoutineOnFailure, RoutineRetryPolicy, RoutineStep } from "@omp-deck/protocol";
+import { useTranslation } from "react-i18next";
 
 import { Field, NumInput, TextInput } from "./form-primitives";
 import { validateStepId } from "./routine-validation";
@@ -15,6 +16,7 @@ interface Props {
  * type-specific fields.
  */
 export function StepCommonFields({ step, onChange, existingIds }: Props) {
+	const { t } = useTranslation();
 	function set<K extends keyof RoutineStep>(key: K, value: RoutineStep[K]): void {
 		onChange({ ...step, [key]: value });
 	}
@@ -25,7 +27,7 @@ export function StepCommonFields({ step, onChange, existingIds }: Props) {
 	}
 	const idCollision = existingIds.includes(step.id);
 	const idError = validateStepId(step.id);
-	const idHint = idCollision ? "duplicate" : idError;
+	const idHint = idCollision ? t("duplicate") : idError;
 	const retry = step.retry;
 
 	return (
@@ -44,14 +46,14 @@ export function StepCommonFields({ step, onChange, existingIds }: Props) {
 						}}
 						className="field h-7 w-full px-2 font-mono text-2xs"
 					>
-						<option value="">(default: abort)</option>
+						<option value="">{t("(default: abort)")}</option>
 						<option value="abort">abort</option>
 						<option value="continue">continue</option>
 						<option value="retry">retry</option>
 					</select>
 				</Field>
 			</div>
-			<Field label="when (JS, optional)">
+			<Field label={t("when (JS, optional)")}>
 				<TextInput
 					value={step.when ?? ""}
 					onChange={(v) => (v.trim() === "" ? clear("when") : set("when", v))}
