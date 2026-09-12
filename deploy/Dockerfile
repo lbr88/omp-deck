@@ -1,15 +1,9 @@
 # syntax=docker/dockerfile:1.7
 #
-# omp-deck — production image. Single-image build; OpenShip builds with
-# the repo root as the build context and points `docker build` at this
-# file via `-f deploy/Dockerfile`. Vite needs the entire workspace
-# (server + web + protocol + bridges + gholam) so the build context
-# cannot be narrowed to `deploy/` alone.
-#
-# Identical to ./Dockerfile at the repo root today; mirrored here so the
-# deploy/ directory is self-describing for OpenShip's app catalog and
-# for operators who do not want to read the repo root. Keep the two in
-# sync when the production runtime image shape changes.
+# omp-deck — production image. Single-image production build. Vite needs the entire workspace
+# (server + web + protocol + bridges + gholam + agent-host) so the
+# build context is the repo root (`docker build -f deploy/Dockerfile .`).
+# Identical to ./Dockerfile at the repo root; keep the two in sync.
 
 # ─── Stage 1: build web ───────────────────────────────────────────────────
 FROM oven/bun:1.3.14 AS web-build

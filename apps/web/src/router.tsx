@@ -5,7 +5,6 @@ import { TasksView } from "./views/TasksView";
 import { RoutinesView } from "./views/RoutinesView";
 import { RunDetailView } from "./views/RunDetailView";
 import { InboxView } from "./views/InboxView";
-import { MarketplaceView } from "./views/MarketplaceView";
 import { KbView } from "./views/KbView";
 import { SkillsView } from "./views/SkillsView";
 import { SettingsView } from "./views/SettingsView";
@@ -105,7 +104,6 @@ const router = createBrowserRouter([
 			{ path: "/gholam/chat/:chatId", element: <GholamChatView /> },
 			{ path: "/routines/:id/runs/:runId", element: <RunDetailView /> },
 			{ path: "/inbox", element: <InboxView /> },
-			{ path: "/marketplace", element: <MarketplaceView /> },
 			{ path: "/skills", element: <SkillsView /> },
 			{ path: "/prompts/library", element: <PromptsLibrary /> },
 			{ path: "/prompts/discover", element: <PromptsDiscover /> },

@@ -15,10 +15,10 @@ pi is known for its flexibility and omp applies some opinions on how to leverage
 
 | | |
 |---|---|
-| ![Kanban](./docs/screenshots/01-kanban-paper.png) | ![Marketplace](./docs/screenshots/03-marketplace-slate.png) |
-| Kanban with `T-N` display IDs (paper theme) | Marketplace browser populated with `anthropics/claude-plugins-official` (slate theme) |
-| ![Appearance settings](./docs/screenshots/04-settings-appearance-slate.png) | ![Messaging settings](./docs/screenshots/05-settings-messaging-slate.png) |
-| Settings → Appearance theme cards | Settings → Messaging with the Telegram bridge supervisor |
+| ![Kanban](./docs/screenshots/01-kanban-paper.png) | ![Appearance settings](./docs/screenshots/04-settings-appearance-slate.png) |
+| Kanban with `T-N` display IDs (paper theme) | Settings → Appearance theme cards |
+| ![Messaging settings](./docs/screenshots/05-settings-messaging-slate.png) | |
+| Settings → Messaging with the Telegram bridge supervisor | |
 | ![Routines builder](./docs/screenshots/06-routines-builder-paper.png) | ![Routines canvas](./docs/screenshots/06-routines-canvas-paper.png) |
 | V1 routines builder editing `daily-briefing` in form mode | The same routine in canvas mode — every step is a node |
 
@@ -52,8 +52,6 @@ omp-deck is the cockpit that holds all of that. The chat surface stays at parity
 
 **Multi-session.** The chat sidebar lists every session you have open, plus the persisted ones you can resume. Each gets its own kanban scope, its own model, its own queued prompts. Switch between them without losing place.
 
-**A marketplace.** Browse, install, and uninstall skills/plugins/MCPs over the SDK's plugin format. Empty state seeds with `anthropics/claude-plugins-official` so you're never staring at an empty page.
-
 **Settings that respect your `.env`.** Provider API keys, host/port, data dirs — all manageable from a UI with masked secrets, an audit log, and atomic writes. Hot-applied where possible.
 
 **Three themes.** Paper (warm cream + rust accent, engineer's-notebook aesthetic), Slate (dark), Horizon (purple-ink dark). FOUC-free swap — pick one and refresh-proof it.
@@ -71,7 +69,7 @@ npm install -g omp-deck
 omp-deck
 ```
 
-Boots on <http://127.0.0.1:8787> — open it in your browser. On first run, the deck creates `~/.omp/agent/` from scratch and installs starter skills + extensions; its own state lives in `~/.omp-deck/` (override with `OMP_DECK_DATA_DIR`). If you already use `omp` in a terminal on this machine, your existing `~/.omp/agent` is picked up automatically — no re-auth.
+Boots on <http://127.0.0.1:8787> — open it in your browser. On first run, the deck creates `~/.omp/agent/` from scratch and installs starter extensions; its own state lives in `~/.omp-deck/` (override with `OMP_DECK_DATA_DIR`). If you already use `omp` in a terminal on this machine, your existing `~/.omp/agent` is picked up automatically — no re-auth.
 
 **Authenticate (one-time, in the deck UI):**
 
@@ -132,7 +130,6 @@ The short version: **Claude Code** is the polished vendor experience for Claude.
 - [Configuration](./docs/configuration.md) — full env reference + restart semantics.
 - [Deployment](./docs/deployment.md) — Tailscale, Docker, SSH-tunnel, hardening checklist.
 - [Slash commands](./docs/slash-commands.md) — deck `/task` + `/plan`, SDK builtins, user/project markdown commands.
-- [Marketplaces](./docs/marketplaces.md) — catalog seeding, install semantics, capability badges.
 - [Skills](./docs/skills.md) — `/skills` view, plugin → skill hierarchy, scope semantics, REST surface.
 - [Telegram bridge](./docs/telegram.md) — DM-driven agent from your phone.
 - [Themes](./docs/themes.md) — Paper / Slate / Horizon / adding more.

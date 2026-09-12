@@ -35,8 +35,7 @@ import {
 	unauthorizedResponse,
 } from "./auth/guard.ts";
 import { WsHub, type ConnectionData } from "./ws.ts";
-import { MarketplaceService } from "./marketplace-service.ts";
-import { marketplaceExtras } from "./marketplace-extras.ts";
+import { applySslFix } from "./ssl-ca.ts";
 import { getThemeByName, setThemeInstance } from "@oh-my-pi/pi-coding-agent/modes/theme/theme";
 import { SkillsService } from "./skills-service.ts";
 import { startSkillsWatcher } from "./skills-watcher.ts";
@@ -45,7 +44,6 @@ import { startKbWatcher } from "./kb-watcher.ts";
 import { InternalUrlRouter } from "@oh-my-pi/pi-coding-agent/internal-urls";
 import { KbProtocolHandler } from "./kb-protocol.ts";
 import { getMcpHealthProbe } from "./mcp-health.ts";
-import { installStarterSkills } from "./starter-skills.ts";
 import { installStarterExtensions } from "./starter-extensions.ts";
 import { buildDefaultBridgeSupervisor } from "./bridge-supervisor.ts";
 import {
@@ -105,9 +103,8 @@ function watchBundle(distDir: string | undefined, hub: { broadcast: (frame: { ty
 
 async function main(): Promise<void> {
 	const config = loadConfig();
-	// Wire the SSL CA bundle BEFORE anything that may clone a git source
-	// (marketplace plugin install, MCP server install, starter skills).
-	marketplaceExtras.applySslFix();
+	// Wire the SSL CA bundle BEFORE anything that may clone a git source.
+	applySslFix();
 	log.info(`omp-deck server starting`, {
 		host: config.host,
 		port: config.port,
@@ -153,10 +150,6 @@ async function main(): Promise<void> {
 	} catch (err) {
 		log.warn(`SDK theme init failed; ask tool labels may not render`, err);
 	}
-	// Sync bundled starter skills into ~/.omp/agent/skills/ before the watcher
-	// spins up. Idempotent — never overwrites a user-edited target — so this
-	// is safe on every boot. Disable with OMP_DECK_INSTALL_STARTER_SKILLS=0.
-	await installStarterSkills();
 	await installStarterExtensions();
 
 	// Wire the GenUI LLM provider into `setGenuiProvider` so the overview
@@ -207,15 +200,13 @@ async function main(): Promise<void> {
 	getMcpHealthProbe().start();
 	let server: Server<ConnectionData>;
 	const supervisor = buildDefaultBridgeSupervisor();
-	const marketplaceService = new MarketplaceService();
-	const skillsService = new SkillsService(config, marketplaceService);
+	const skillsService = new SkillsService(config);
 	const kbService = new KbService({ root: resolveKbRoot() });
 	const router = buildRouter(
 		bridge,
 		config,
 		routinesRunner,
 		supervisor,
-		marketplaceService,
 		skillsService,
 		kbService,
 		{
@@ -224,26 +215,6 @@ async function main(): Promise<void> {
 			authSession: { getAccessToken: () => accessToken },
 		},
 	);
-
-	// Seed the canonical Anthropic marketplace on first boot. The deck ships
-	// no marketplace registry, so a fresh container boots with an empty
-	// catalog and the marketplace / prompts-discover /
-	// discovery-search surfaces all show empty. Idempotent: only runs when
-	// the registry has zero entries, so user-added marketplaces and later
-	// boots both no-op. Non-fatal: network/SSL failures are logged and
-	// swallowed so a broken seed never blocks the HTTP listener from
-	// coming up — the marketplace surface can recover later via POST
-	// /api/marketplaces (which now runs ensureSslFix itself).
-	try {
-		if (await marketplaceService.isRegistryEmpty()) {
-			await marketplaceService.addMarketplace(
-				"https://github.com/anthropics/claude-plugins-official.git",
-			);
-			log.info(`seeded canonical marketplace: anthropics/claude-plugins-official`);
-		}
-	} catch (err) {
-		log.warn(`marketplace seed skipped`, err);
-	}
 
 	const skillsWatcherDispose = startSkillsWatcher(config);
 	const kbWatcherDispose = startKbWatcher(kbService);

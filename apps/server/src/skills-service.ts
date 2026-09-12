@@ -35,8 +35,6 @@ import type {
 import type { Config } from "./config.ts";
 import i18n from "./i18n.ts";
 import { logger } from "./log.ts";
-import type { MarketplaceService } from "./marketplace-service.ts";
-
 const log = logger("skills");
 
 /**
@@ -79,7 +77,6 @@ const PROVIDER_PRIORITY: Readonly<Record<string, number>> = {
 export class SkillsService {
 	constructor(
 		private readonly config: Config,
-		private readonly marketplace: MarketplaceService,
 	) {}
 
 	async listSkills(cwd?: string): Promise<ListSkillsResponse> {
@@ -237,16 +234,7 @@ export class SkillsService {
 	 * so it's one disk hit, not one per skill.
 	 */
 	private async buildPluginIndex(): Promise<PluginIndex> {
-		const installed = await this.marketplace.listInstalled();
-		const byPath = new Map<string, { id: string; name: string; marketplace: string }>();
-		for (const p of installed) {
-			byPath.set(normalize(p.installPath), {
-				id: p.id,
-				name: p.name,
-				marketplace: p.marketplace,
-			});
-		}
-		return byPath;
+		return new Map();
 	}
 
 	private toSummary(item: SdkSkill, pluginIndex: PluginIndex): SkillSummary | undefined {

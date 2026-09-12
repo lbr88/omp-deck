@@ -9,8 +9,7 @@
  * If `source` is omitted we scaffold an empty SKILL.md so the install is durable
  * and visible to the SDK on next refresh; the user can edit it later.
  *
- * Modeled on `skillsMP.install` (skillsmp.ts) — same target dir, same write
- * pattern — but entry-point only: no SkillsMP API fetch, no marketplace clone.
+ * Writes a SKILL.md into the native skills dir. No catalog fetch.
  */
 import { promises as fs } from "node:fs";
 import * as os from "node:os";

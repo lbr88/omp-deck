@@ -11,10 +11,9 @@ Bun server  (apps/server)
    │   └─ InProcessAgentBridge → @oh-my-pi/pi-coding-agent SDK
    │       └─ Map<sessionId, AgentSession>
    ├─ Hono REST router  /api/{health, sessions, tasks, routines, inbox,
-   │                         settings, models, marketplace, bridges, slash-commands, fs}
+   │                         settings, models, machines, bridges, slash-commands, fs}
    ├─ Bun.serve WebSocket hub  /ws
    ├─ BroadcastBus (non-session frames: tasks_changed)
-   ├─ MarketplaceService (lazy SDK MarketplaceManager wrapper)
    ├─ BridgeSupervisor (telegram and future messaging bridges)
    ├─ Routines runner (croner)
    └─ Static file serving for the built web bundle
@@ -157,7 +156,7 @@ The SDK package is `@oh-my-pi/pi-coding-agent`, pinned in
 `apps/server/package.json`. The deck reads from:
 
 - `~/.omp/agent/` (override `OMP_AGENT_DIR`) — sessions JSONL, auth.db,
-  marketplaces.json, installed_plugins.json.
+  auth.db, sessions JSONL.
 - The SDK's in-process `ModelRegistry`, `SessionManager`, `Settings`,
   `MarketplaceManager`, `BUILTIN_SLASH_COMMANDS_INTERNAL`,
   `ACP_BUILTIN_SLASH_COMMANDS`, and friends.

@@ -1,13 +1,11 @@
 /**
  * New-feature routers for the v0.7 harness overhaul. Mounted from `routes.ts`
  * alongside the existing legacy routers. Each router is small, single-purpose,
- * and uses the existing service singletons (bridge, marketplace, kb, etc).
+ * and uses the existing service singletons (bridge, kb, etc).
  *
  * The new surfaces added here:
  *
  *   • `/api/providers/custom`           — CRUD over `models.yml` custom providers.
- *   • `/api/marketplace/*` (extended)   — search, featured, popular, refresh, SSL-bypass.
- *   • `/api/skills/marketplace/*`       — SkillsMP-backed skill discovery + install.
  *   • `/api/system/lifecycle`           — start/stop/restart the harness.
  *   • `/api/sessions/:id/{kill,archive,pin,title}` — instance management.
  *   • `/api/sessions/auto-title`        — AI-generated session naming.
@@ -25,9 +23,6 @@ import { Hono } from "hono";
 import { type CustomProvider, getCustomProviders } from "./custom-providers.ts";
 import { getDeckAuthStorage, getDeckModelRegistry } from "./auth-singleton.ts";
 import { logger } from "./log.ts";
-import { marketplaceExtras } from "./marketplace-extras.ts";
-import { getMarketplace } from "./marketplace-service.ts";
-import { skillsMP } from "./skillsmp.ts";
 import { gholam, parseRemoteOwnerRepo } from "./gholam.ts";
 import { getLatestDeployState } from "./deploy-state.ts";
 import { lifecycle } from "./lifecycle.ts";
@@ -162,65 +157,6 @@ export function buildHarnessRouter(bridge: AgentBridge): Hono {
 		}
 	});
 
-	// ── Marketplace extensions ─────────────────────────────────────────────────
-	app.get("/marketplace/search", async (c) => {
-		const q = c.req.query("q") ?? "";
-		const featured = c.req.query("featured") === "1";
-		const limit = Number.parseInt(c.req.query("limit") ?? "50", 10);
-		try {
-			const results = await marketplaceExtras.search({ query: q, featured, limit });
-			return c.json({ results });
-		} catch (err) {
-			return c.json({ error: String(err) }, 500);
-		}
-	});
-
-	app.get("/marketplace/featured", async (c) => {
-		const limit = Number.parseInt(c.req.query("limit") ?? "12", 10);
-		const list = await marketplaceExtras.featured(limit);
-		return c.json({ results: list });
-	});
-
-	app.get("/marketplace/popular", async (c) => {
-		const limit = Number.parseInt(c.req.query("limit") ?? "20", 10);
-		const list = await marketplaceExtras.popular(limit);
-		return c.json({ results: list });
-	});
-
-	app.post("/marketplace/refresh", async (c) => {
-		try {
-			const mgr = getMarketplace();
-			await mgr.refresh();
-			return c.json({ ok: true });
-		} catch (err) {
-			return c.json({ error: String(err) }, 500);
-		}
-	});
-
-	// ── SkillsMP-backed skill marketplace ─────────────────────────────────────
-	app.get("/skills/marketplace/search", async (c) => {
-		const q = c.req.query("q") ?? "";
-		const limit = Number.parseInt(c.req.query("limit") ?? "30", 10);
-		const results = await skillsMP.search(q, limit);
-		return c.json({ results });
-	});
-
-	app.get("/skills/marketplace/featured", async (c) => {
-		const limit = Number.parseInt(c.req.query("limit") ?? "12", 10);
-		return c.json({ results: await skillsMP.featured(limit) });
-	});
-
-	app.post("/skills/marketplace/install", async (c) => {
-		let body: { slug: string; scope?: "user" | "project" };
-		try {
-			body = (await c.req.json()) as typeof body;
-		} catch {
-			return c.json({ error: "invalid json" }, 400);
-		}
-		if (!body.slug) return c.json({ error: "slug required" }, 400);
-		const result = await skillsMP.install(body.slug, body.scope ?? "user");
-		return c.json(result);
-	});
 
 	// ── System lifecycle (start/stop/restart) ──────────────────────────────────
 	app.get("/system/lifecycle", (c) => lifecycle.status().then((s) => c.json(s)));

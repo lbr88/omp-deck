@@ -52,7 +52,6 @@ import {
 	seedExtraWorkspaces,
 } from "./routes-workspaces.ts";
 import { buildBridgesRouter } from "./routes-bridges.ts";
-import { buildMarketplaceRouter } from "./routes-marketplace.ts";
 import { buildSkillsRouter } from "./routes-skills.ts";
 import { buildKbRouter } from "./routes-kb.ts";
 import { buildUploadsRouter } from "./routes-uploads.ts";
@@ -70,7 +69,6 @@ import { buildWorktreesRouter } from "./routes-worktrees.ts";
 import { buildAgentConfigRouter } from "./routes-agent-config.ts";
 import { buildPushRouter } from "./routes-push.ts";
 import { buildHarnessRouter } from "./routes-harness.ts";
-import { buildDiscoveryRouter } from "./discovery/routes.ts";
 import { buildPromptsRouter } from "./routes-prompts.ts";
 import { buildMcpInstallRouter } from "./routes-mcp-install.ts";
 import { buildSkillsInstallRouter } from "./routes-skills-install.ts";
@@ -80,7 +78,6 @@ import { buildRoutesOverview } from "./routes-overview.ts";
 import { buildLLMRouter } from "./routes-llm.ts";
 import { buildGenuiRouter } from "./routes-genui.ts";
 import { buildPreviewRouter } from "./routes-preview.ts";
-import { buildOpenshipRouter } from "./routes-openship.ts";
 import { getMcpHealthProbe } from "./mcp-health.ts";
 import { buildMcpHealthRouter } from "./routes-mcp-health.ts";
 import { buildSessionAttachRouter, buildSessionAttachWebRouter } from "./routes-session-attach.ts";
@@ -89,7 +86,6 @@ import { buildMachinesRouter } from "./routes-machines.ts";
 import { buildAuthSessionRouter } from "./routes-auth-session.ts";
 import type { RoutinesRunner } from "./routines-runner.ts";
 import type { BridgeSupervisor } from "./bridge-supervisor.ts";
-import type { MarketplaceService } from "./marketplace-service.ts";
 import type { SkillsService } from "./skills-service.ts";
 import type { KbService } from "./kb-service.ts";
 
@@ -98,7 +94,6 @@ export function buildRouter(
 	config: Config,
 	runner: RoutinesRunner,
 	supervisor: BridgeSupervisor,
-	marketplace: MarketplaceService,
 	skills: SkillsService,
 	kb: KbService,
 	opts: {
@@ -468,7 +463,6 @@ export function buildRouter(
 	app.route("/", buildSettingsRouter(bridge, config, opts));
 	app.route("/", buildOrientationRouter());
 	app.route("/", buildBridgesRouter(supervisor));
-	app.route("/", buildMarketplaceRouter(marketplace));
 	app.route("/", buildSkillsRouter(skills));
 	app.route("/", buildKbRouter(kb));
 	app.route("/", buildFilesRouter());
@@ -492,7 +486,6 @@ export function buildRouter(
 
 	app.route("/", buildHarnessRouter(bridge));
 	app.route("/", buildPromptsRouter());
-	app.route("/", buildDiscoveryRouter());
 	app.route("/", buildMcpHealthRouter(getMcpHealthProbe()));
 	// Per-section install endpoints for MCP + skills.
 	app.route("/mcp", buildMcpInstallRouter());
@@ -510,7 +503,6 @@ export function buildRouter(
 	// declare leaf paths so no overlap with the ones above.
 	app.route("/", buildGenuiRouter());
 	app.route("/", buildPreviewRouter());
-	app.route("/", buildOpenshipRouter());
 	app.route("/api", buildSessionAttachRouter());
 	app.route("/attach", buildSessionAttachWebRouter());
 	startCustomProvidersWatcher();

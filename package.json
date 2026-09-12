@@ -2,7 +2,7 @@
 	"name": "omp-deck",
 	"version": "0.7.0",
 	"private": false,
-	"description": "Cockpit web UI for the omp (oh-my-pi) coding agent \u2014 multi-session chat, kanban, cron routines, inbox, messaging bridges, and a marketplace browser. Designed to be served loopback-only behind a Tailscale gate or SSH tunnel.",
+	"description": "Cockpit web UI for the omp (oh-my-pi) coding agent \u2014 multi-session chat, kanban, cron routines, inbox, messaging bridges, and multi-machine remote hosts. Designed to be served loopback-only behind a Tailscale gate or SSH tunnel.",
 	"keywords": [
 		"omp",
 		"oh-my-pi",
@@ -53,7 +53,6 @@
 		"apps/server/src",
 		"apps/server/package.json",
 		"apps/web/dist",
-		"starter-skills",
 		"starter-extensions",
 		"README.md",
 		"LICENSE",

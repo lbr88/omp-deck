@@ -509,8 +509,8 @@ export class McpHealthProbe {
 	private resolveConfigPath(): string | undefined {
 		// Fall back to the standard install location so the probe reads the
 		// user's actual mcp.json on a fresh cold-boot. The same fallback is
-		// used by routes-mcp-install / skills / storefront-installed /
-		// onboarding-state / session-lifecycle / skillsmp / custom-providers,
+		// used by routes-mcp-install / skills /
+		// onboarding-state / session-lifecycle / custom-providers,
 		// so probe state stays consistent with everything else that touches
 		// the user's MCP config. Overridable via OMP_AGENT_DIR.
 		const agentDir = loadConfig().agentDir ?? path.join(os.homedir(), ".omp", "agent");

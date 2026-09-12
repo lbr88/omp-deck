@@ -39,10 +39,7 @@ services:
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
-      # The OpenShip MCP bearer token. Without this the deck's own
-      # /api/openship/* routes return 503 with a "not configured" hint;
-      # with it, the deck can list projects, trigger deploys, and pull
-      # logs directly from the OpenShip sidecar.
+      # Optional bearer for the OpenShip MCP server in mcp.json.tmpl.
       MCP_OPENSHIP_TOKEN: "${MCP_OPENSHIP_TOKEN:-}"
       GITHUB_TOKEN: "${GITHUB_TOKEN:-}"
     volumes:

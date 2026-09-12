@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { CheckCircle2, ExternalLink, Loader2, Plus, Plug, X } from "lucide-react";
 import type { McpHealthStatus } from "@omp-deck/protocol";
 import { Layout } from "@/components/Layout";
-import { OpenShipPanel } from "@/views/openship/OpenShipPanel";
 import { McpServerActions } from "@/components/mcp/McpServerActions";
 import { McpToolsPopover } from "@/components/mcp/McpToolsPopover";
 import { mcpApi } from "@/lib/mcp-api";
@@ -77,9 +76,6 @@ export function IntegrationsView() {
 									setToolsFor={setToolsFor}
 								/>
 							)}
-							<div className="mx-auto w-full max-w-5xl">
-								<OpenShipPanel />
-							</div>
 						</div>
 					</div>
 				}

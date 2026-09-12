@@ -644,11 +644,6 @@ function Step5Done({ onFinish }: { onFinish: () => void }) {
 						{t("Tab to")} <strong>{t("Tasks")}</strong> {t("and read")} <strong>T-1</strong>{" "}
 						{t("for a deeper tour.")}
 					</li>
-					<li>
-						{t("Visit")}{" "}
-						<a href="/marketplace" className="underline">{t("Marketplace")}</a>{" "}
-						{t("to install plugins / skills (recommended: claude-plugins-official).")}
-					</li>
 				</ul>
 			</div>
 			<div className="flex justify-end">

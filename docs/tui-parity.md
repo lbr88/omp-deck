@@ -36,7 +36,7 @@ parity on. Updated alongside SDK upgrades.
 | Queued-prompt edit / cancel | ✓ | Hover a queued bubble to reveal Pencil/X. Edit opens an inline textarea (Enter saves, Esc discards, empty saves = cancel). Bridge rebuilds the SDK queue preserving order + ids. |
 | Model fallback chain editing | — | Future. The SDK handles it; the deck just shows the active primary. |
 | Skill management UI | — | Read-only `/skills` view shipped (provider grouping + frontmatter inspector). Author-from-deck flow still backlog. |
-| `/marketplace` slash command | — | TUI-only in the SDK; deck filters it out and exposes the same functionality via the Marketplace nav entry instead. |
+| `/marketplace` slash command | — | TUI-only in the SDK; deck filters it out of the picker. |
 | `/model` slash command | — | TUI-only in the SDK; deck filters it out and exposes the same functionality via the chat-header model picker. |
 | `/copy` family (clipboard) | — | TUI-only in the SDK. The deck's per-codeblock Copy buttons cover the most-common case. |
 

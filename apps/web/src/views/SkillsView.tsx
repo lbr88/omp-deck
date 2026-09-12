@@ -470,7 +470,7 @@ function EmptyState({ total }: { total: number }) {
 			</div>
 			<div className="mt-1 max-w-xs text-xs text-ink-3">
 				{total === 0
-					? t("Drop a SKILL.md into ~/.omp/agent/skills/<name>/, or install a marketplace plugin.")
+					? t("Drop a SKILL.md into ~/.omp/agent/skills/<name>/.")
 					: t("Try clearing the source / level filters or the search box.")}
 			</div>
 		</div>
@@ -518,7 +518,7 @@ function SkillsSidebar({
 				<div className="meta">{t("Skills")}</div>
 				<div className="mt-0.5 text-xs text-ink-3">
 					{t("Every skill")} <span className="text-ink-2">omp</span>{" "}
-					{t("can reach — native, marketplace, and sibling agent-tool configs. Enable/disable lives on the owning plugin or provider.")}
+					{t("can reach — native skills and sibling agent-tool configs. Enable/disable lives on the owning provider.")}
 				</div>
 			</div>
 

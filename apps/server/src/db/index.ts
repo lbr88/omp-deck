@@ -295,7 +295,7 @@ More in \`docs/\`:
 - \`docs/install.md\` — fresh vs existing-omp install paths.
 - \`docs/configuration.md\` — full env reference.
 - \`docs/deployment.md\` — Tailscale, Docker, SSH-tunnel hardening.
-- \`docs/marketplaces.md\` — catalog seeding and install semantics.
+- \`docs/multi-machine.md\` — remote agent hosts.
 - \`docs/telegram.md\` — bridge setup if you want to chat with the agent from your phone.
 `;
 
