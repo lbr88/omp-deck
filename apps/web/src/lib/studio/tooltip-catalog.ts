@@ -20,7 +20,6 @@
  * every element we know is mounted.
  *
  *   elements: gholam.sidebar, gholam.sidebar.start, gholam.sidebar.heartbeat,
- *             marketplace.featured, marketplace.popular, marketplace.search,
  *             kanban.card, kanban.column, kanban.columns-edit,
  *             studio.pane.kb, studio.pane.composer, studio.pane.tasks,
  *             studio.pane.gholam, studio.pane.prompts,
@@ -32,7 +31,7 @@
  *             gholam.priority.remove
  *   context-keys: kanban.card, kanban.column, gholam.priority,
  *                 composer.attachment, kb.commit-graph.vertex, kb.file,
- *                 studio.statusbar.badge, bridge.telegram, store.item
+ *                 studio.statusbar.badge, bridge.telegram
  *
  * Bump TOOLTIP_CATALOG_VERSION on every add/remove/rewrite. The version
  * number is a single integer — clients compare strictly. A drift logs a
@@ -40,7 +39,7 @@
  */
 import type { MenuAction } from "./ContextMenu";
 
-export const TOOLTIP_CATALOG_VERSION = 4;
+export const TOOLTIP_CATALOG_VERSION = 5;
 
 export type TooltipEntry = {
 	title: string;
@@ -123,17 +122,10 @@ export const TOOLTIPS: Record<string, TooltipEntry> = {
 		capabilities: ["open", "task.action"],
 		since: "0.6.1",
 	},
-	"view.marketplace": {
-		title: "Marketplace",
-		body: "Browse, install, and uninstall plugins. Catalog comes from /api/marketplace; featured + popular rows score against the live install counts. Installing calls POST /marketplace/install; uninstalling is a dry-run-confirmed DELETE.",
-		related: ["marketplace.featured", "marketplace.popular", "marketplace.search"],
-		capabilities: ["edit", "execute"],
-		since: "0.6.1",
-	},
 	"view.skills": {
 		title: "Skills",
-		body: "Skills catalog mirrors the deck's plugin cache. Live refetch rides on `skills_changed` frames; an install is just a marketplace entry under the hood.",
-		related: ["view.marketplace"],
+		body: "Skills catalog of every skill omp discovers. Live refetch rides on `skills_changed` frames.",
+		related: ["view.chat"],
 		capabilities: ["edit"],
 		since: "0.6.1",
 	},
@@ -238,56 +230,6 @@ export const TOOLTIPS: Record<string, TooltipEntry> = {
 		since: "0.6.1",
 	},
 
-	// ─── Marketplace chrome ──────────────────────────────────────────────
-	"marketplace.featured": {
-		title: "Featured plugins",
-		body: "Curated picks from the marketplace. Click a tile to select the entry; the inspector updates to show its description, install scope, and tags.",
-		related: ["marketplace.popular", "view.marketplace"],
-		capabilities: ["open"],
-		since: "0.6.1",
-	},
-	"marketplace.popular": {
-		title: "Popular this week",
-		body: "Top installs from the past seven days. Same affordances as Featured; the row sits below Featured when both are populated.",
-		related: ["marketplace.featured", "view.marketplace"],
-		capabilities: ["open"],
-		since: "0.6.1",
-	},
-	"marketplace.search": {
-		title: "Search marketplace",
-		body: "Free-text filter over name, marketplace source, description, author, and tags. Case-insensitive substring match.",
-		related: ["view.marketplace"],
-		capabilities: ["edit"],
-		since: "0.6.1",
-	},
-	"marketplace.install": {
-		title: "Install plugin",
-		body: "Calls POST /api/marketplace/install. Default scope is user; pass 'project' to install under .omp-deck/ in the active cwd instead.",
-		related: ["view.marketplace"],
-		capabilities: ["edit", "execute"],
-		since: "0.6.1",
-	},
-	"marketplace.uninstall": {
-		title: "Uninstall plugin",
-		body: "Calls DELETE /api/marketplace/install. Requires a confirm chip because it removes the plugin from the cache.",
-		related: ["view.marketplace"],
-		capabilities: ["danger", "execute"],
-		since: "0.6.1",
-	},
-	"marketplace.dry-run": {
-		title: "Dry-run install",
-		body: "Calls POST /api/marketplace/install/dry-run and surfaces the predicted file write list. Lets you see what would change before committing the real install.",
-		related: ["marketplace.install"],
-		capabilities: ["execute"],
-		since: "0.6.1",
-	},
-	"marketplace.refresh": {
-		title: "Refresh sources",
-		body: "Calls POST /api/marketplace/refresh to re-fetch each registered marketplace source's catalog. Used after a marketplace index changes upstream.",
-		related: ["view.marketplace"],
-		capabilities: ["execute"],
-		since: "0.6.1",
-	},
 
 	// ─── Gholam chrome ───────────────────────────────────────────────────
 	"gholam.sidebar": {
@@ -713,14 +655,6 @@ export const TOOLTIPS: Record<string, TooltipEntry> = {
 		since: "0.6.2",
 	},
 
-	// ─── Storefront ──────────────────────────────────────────────────────
-	"store.item": {
-		title: "Storefront item",
-		body: "A single catalog row from the marketplace / KB / skill sources. Right-click for the per-item actions (install, copy id, open detail).",
-		related: ["marketplace.install"],
-		capabilities: ["open", "execute"],
-		since: "0.6.1",
-	},
 };
 
 export type MenuEntry = {
@@ -857,42 +791,6 @@ export const MENUS: Record<string, MenuEntry> = {
 		],
 	},
 
-	// ─── Marketplace ───────────────────────────────────────────────────
-	"marketplace.entry": {
-		scope: "marketplace.entry",
-		since: "0.6.1",
-		actions: (ctx) => {
-			const c = (ctx ?? {}) as { entry?: { id: string; installed?: { scope: "user" | "project" } } };
-			return [
-				{ id: "install", label: "Install", capability: "edit", icon: "plus", handler: () => undefined },
-				{ id: "dry-run", label: "Dry-run", capability: "execute", icon: "refresh", handler: () => undefined },
-				{ id: "uninstall", label: "Uninstall", danger: true, capability: "danger", icon: "trash", handler: () => undefined },
-				{ id: "copy-id", label: "Copy id", capability: "edit", icon: "copy", handler: () => { if (c?.entry?.id) void navigator.clipboard.writeText(c.entry.id); } },
-			];
-		},
-	},
-	"marketplace": {
-		scope: "marketplace",
-		since: "0.6.1",
-		actions: () => [
-			{ id: "refresh", label: "Refresh sources", capability: "execute", icon: "refresh", handler: () => undefined },
-			{ id: "add", label: "Add marketplace", capability: "edit", icon: "plus", handler: () => undefined },
-		],
-	},
-
-	// ─── Storefront ────────────────────────────────────────────────────
-	"store.item": {
-		scope: "store.item",
-		since: "0.6.1",
-		actions: (ctx) => {
-			const c = (ctx ?? {}) as { item?: { id: string; section: string } };
-			return [
-				{ id: "open", label: "Open detail", capability: "open", icon: "external-link", handler: () => undefined },
-				{ id: "install", label: "Install", capability: "edit", icon: "plus", handler: () => undefined },
-				{ id: "copy-id", label: "Copy id", capability: "edit", icon: "copy", handler: () => { if (c?.item?.id) void navigator.clipboard.writeText(c.item.id); } },
-			];
-		},
-	},
 
 	// ─── Bridge pills (statusbar) ─────────────────────────────────────
 	"bridge.telegram": {
