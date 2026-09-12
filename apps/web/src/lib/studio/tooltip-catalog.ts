@@ -10,7 +10,7 @@
  *   - every BridgeName + every NotificationLevel
  *   - every server route prefix inventoried in apps/server/src/routes*.ts
  *   - the top-of-file docblocks of every view file
- *   - the marketplace install/uninstall/dry-run call paths
+ *   - MCP health / install call paths agents use
  *
  * [STUDIO-SEED] marker list — every `data-tooltip-key` / `data-context-key`
  * the studio expects to find a non-empty entry for in `/studio` even when

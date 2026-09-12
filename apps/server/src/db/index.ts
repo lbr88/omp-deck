@@ -258,7 +258,8 @@ const WELCOME_BODY = `Welcome to omp-deck. A few orientation pointers; mark this
 - **Tasks** — this kanban. \`T-N\` ids stay stable; columns are user-configurable.
 - **Routines** — cron-scheduled bash / prompt / script jobs.
 - **Inbox** — quick-capture surface. Promote items to tasks with one click.
-- **Marketplace** — browse and install plugins/skills from registered catalogs. The empty-state suggests \`anthropics/claude-plugins-official\`.
+- **Skills** — inspect skills the agent can load from \`~/.omp/agent/skills/\` and sibling provider dirs.
+- **Integrations** — MCP server health and tool toggles the agent host needs.
 - **Settings** — env vars, themes, messaging bridges, appearance.
 
 ### Define an auto-start prompt (optional)

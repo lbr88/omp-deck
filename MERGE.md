@@ -5,7 +5,7 @@ Branch `merge/kaka-cnlimiter` combines two forks of [bjb2/omp-deck](https://gith
 | Remote | Repo | Role in this merge |
 |--------|------|--------------------|
 | `origin` | lbr88/omp-deck | Target fork / PR destination |
-| `kaka` | kaka-sangi/omp-deck | **Ours (HEAD)** — voice, rich editor, focus mode, auto-kanban, worktrees/repo manager, Gholam, storefront, UX redesign, security/build fixes |
+| `kaka` | kaka-sangi/omp-deck | **Ours (HEAD)** — voice, rich editor, focus mode, auto-kanban, worktrees/repo manager, Gholam, UX redesign, security/build fixes |
 | `cnlimiter` | cnlimiter/omp-deck | **Theirs** — multi-machine remote agent hosts (`apps/agent-host`), center-deck orchestration, `OMP_DECK_ACCESS_TOKEN` session login, docker/install scripts, multi-machine docs, i18n |
 
 ## Strategy
@@ -26,12 +26,13 @@ Keep **both** feature sets where possible:
 - `apps/agent-host/src/bridge/plan-mode-bridge.ts` — took cnlimiter agent-host copy (correct `bridge-context` imports; SDK 17 feature detection)
 - Web SessionPicker / Sidebar — preferred kaka `SessionRow` UX (urgency, archive, AI meta)
 - OAuthFlowModal — preferred kaka remote-deck paste-code UX
-- i18n wired where it did not dismantle kaka UI
+- i18n is English-only (zh locale stripped)
 
 ## Follow-ups
 
 - Migration id collision: both `005-assigned-agent.sql` (cnlimiter) and `005-auth.sql` (kaka) — verify migrate runner ordering
 - Duplicate `010-*.sql` filenames similarly
 - Port any kaka-only plan-mode polish into agent-host bridge if SDK 17 gaps appear
-- Full typecheck/test suite; i18n coverage for strings still hard-coded from kaka
+- Full typecheck/test suite
+- Shop UIs (storefront / marketplace / OpenShip PaaS) and canned agent-defaults are stripped; protocol still has leftover `store_item_*` / marketplace type names
 - Confirm nested AuthGates behave correctly when only one auth mode is enabled

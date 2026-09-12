@@ -195,16 +195,6 @@ interface StoreState {
 	deployState: DeployState | null;
 
 	/**
-	 * Realtime storefront pulse. `byId` mirrors the last `store_item_added`
-	 * insertion (epoch-ms) so any view can render an entry-glow without
-	 * subscribing to the WS bus directly; `counter` is bumped on every
-	 * `store_item_added` / `store_item_updated` / `store_item_removed` /
-	 * `discovery_added` frame as a "something changed, refetch" signal —
-	 * same shape as `tasksChangeCounter` / `skillsChangeCounter`.
-	 */
-	storefrontPulse: { byId: Record<string, number>; counter: number };
-
-	/**
 	 * Latest MCP health snapshot merged from successive `mcp_health` frames.
 	 * The server emits one frame per server after each probe; we union by
 	 * `McpHealthStatus.id` and stamp `lastReceivedAtMs` so the strip can
@@ -382,7 +372,6 @@ export const useStore = create<StoreState>()(
 		heartbeat: null,
 		notifications: [],
 		deployState: null,
-		storefrontPulse: { byId: {}, counter: 0 },
 		mcpHealth: { response: null, lastReceivedAtMs: null },
 	mcpToolsByName: {},
 	mcpToolsChangeCounter: 0,
@@ -1286,33 +1275,12 @@ function handleFrame(
 		});
 			return;
 
-case "store_item_added":
-	set((s) => ({
-		storefrontPulse: {
-			byId: { ...s.storefrontPulse.byId, [frame.item.id]: Date.now() },
-			counter: s.storefrontPulse.counter + 1,
-				},
-	}));
-			return;
-
-case "store_item_updated":
-	set((s) => ({
-		storefrontPulse: {
-			byId: s.storefrontPulse.byId,
-			counter: s.storefrontPulse.counter + 1,
-				},
-	}));
-			return;
-
-case "store_item_removed":
-		set((s) => {
-		const { [frame.id]: _gone, ...rest } = s.storefrontPulse.byId;
-		return { storefrontPulse: { byId: rest, counter: s.storefrontPulse.counter + 1 } };
-		});
-			return;
-
-case "discovery_added":
-	set((s) => ({ storefrontPulse: { byId: s.storefrontPulse.byId, counter: s.storefrontPulse.counter + 1 } }));
+		// Leftover protocol frame names from the stripped storefront/discovery
+		// shop. Ignore them so a stale producer cannot crash the client.
+		case "store_item_added":
+		case "store_item_updated":
+		case "store_item_removed":
+		case "discovery_added":
 			return;
 
 case "mcp_health":

@@ -60,7 +60,6 @@ docker run -d --name omp-deck \
   -e OMP_DECK_DB_PATH=/data/deck.db \
   -e OMP_DECK_DATA_DIR=/data \
   -e OMP_DECK_ACCESS_TOKEN="$(openssl rand -hex 32)" \
-  -e OMP_DECK_LANG=zh \
   -v omp-deck-data:/data \
   omp-deck
 ```

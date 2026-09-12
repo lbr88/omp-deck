@@ -4,8 +4,8 @@
  *
  * These files are loaded in two very different environments:
  *
- *  1. Inside the deck server — where the real deck i18n (i18next with en/zh
- *     dictionaries) and the deck's log.ts formatting are available.
+ *  1. Inside the deck server — where the real deck i18n (English i18next
+ *     dictionary) and the deck's log.ts formatting are available.
  *  2. Inside a remote `omp --mode rpc` host extension — where only the omp
  *     SDK + Bun builtins exist and no node_modules are installed. The deck's
  *     i18next dictionary cannot ride along, so the shared modules must not

@@ -139,8 +139,8 @@ If any of those fail, see [troubleshooting](#troubleshooting) below.
   for `dataDir` resolution rules.
 - **Telegram bridge mapping DB**: `<dataDir>/telegram-bridge.db` (only created
   when the bridge runs).
-- **Marketplace state**: `~/.omp/plugins/installed_plugins.json` and
-  `~/.omp/plugins/marketplaces.json` (managed by the SDK).
+- **SDK plugin cache** (if you install plugins via the omp TUI): `~/.omp/plugins/installed_plugins.json` and
+  `~/.omp/plugins/marketplaces.json`. The deck does not ship a shop UI for this.
 
 ---
 
@@ -179,10 +179,6 @@ at least one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / etc. is set. If you
 authenticated via `omp` CLI, the provider entries surface via the SDK's auth
 store rather than env vars — switching to the deck-managed env doesn't break
 that.
-
-**Marketplace is empty.** Click "Add" on the suggested
-`anthropics/claude-plugins-official` card. The deck shells out to git under
-the hood, so git must be installed.
 
 **The kanban is empty and there's no welcome task.** That means `tasks` had
 rows once — the welcome seed only fires against a truly empty table. Run

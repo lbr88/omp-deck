@@ -539,8 +539,7 @@ export interface UninstallPluginRequest {
 
 /**
  * Diff row: installed plugin's recorded version lags the catalog version.
- * Drives the storefront "Update" button + the `/api/marketplace/updates`
- * polling endpoint.
+ * Leftover SDK marketplace wire type — no deck shop UI consumes this.
  */
 export interface MarketplaceUpdate {
 	id: string; // "name@marketplace"
@@ -1257,19 +1256,14 @@ type _ServerFrameBase =
 			timestamp: string;
 	  }
 	/**
-	 * Storefront catalog event: an item appeared (live SSE pulse), was mutated
-	 * in place, or was removed entirely. Pushed by the deck's seed loader,
-	 * marketplace-watcher, KB-watcher, and skill-scanner. Web subscribers
-	 * merge into the zustand `storefront.itemsBySection` map and render a
-	 * pulse ring on arrival.
+	 * Leftover catalog pulse names from the stripped storefront shop.
+	 * Clients ignore these; the type names stay on the wire for compat.
 	 */
 	| { type: "store_item_added"; section: StoreSection; item: StoreItem }
 	| { type: "store_item_updated"; section: StoreSection; item: StoreItem }
 	| { type: "store_item_removed"; section: StoreSection; id: string }
 	/**
-	 * Bulk fan-out: a discovery provider returned a fresh result batch.
-	 * The web zustand store merges into `livePulseIds` for the SSE pulse
-	 * effect. Throttled per-provider by the WsHub's broadcast throttle.
+	 * Leftover discovery pulse name from the stripped shop. Clients ignore it.
 	 */
 	| { type: "discovery_added"; hits: DiscoveryHit[] }
 	/**
@@ -2522,13 +2516,13 @@ export interface ListPromptRecommendationsResponse {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Storefront, Discovery, MCP Health (§1, §2, §3, §6 of docs/STOREFRONT.md)
+// Leftover storefront/discovery wire types + live MCP health (§6 plumbing).
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** A storefront section. Drives the navigation chip + the per-page route. */
+/** Leftover storefront section name. No deck shop UI routes on these. */
 export type StoreSection = "plugins" | "mcps" | "skills" | "prompts";
 
-/** Single storefront item — one installable across the four sections. */
+/** Leftover storefront item shape. No deck shop UI consumes this. */
 export interface StoreItem {
 	id: string;
 	section: StoreSection;
@@ -2577,7 +2571,7 @@ export interface DiscoveryHit {
 	description?: string;
 	author?: { name: string; url?: string; avatar?: string };
 	iconUrl?: string;
-	/** Canonical "open" deep link — routes to the storefront detail page. */
+	/** Canonical "open" deep link. Leftover shop field; unused by the deck UI. */
 	url: string;
 	source: {
 		kind: "marketplace" | "github" | "web" | "kb" | "local";

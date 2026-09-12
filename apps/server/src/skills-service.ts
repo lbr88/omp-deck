@@ -6,10 +6,9 @@
  * `claude-plugins`, `claude`, `codex`, `opencode`, ...) each tagged with
  * `_source.provider`, `_source.providerName`, and `level`.
  *
- * The marketplace-only T-27 implementation has been replaced. The deck stays
- * omp-native: it shows what omp loads, with `native` (the user's own
- * `~/.omp/agent/skills/`) sorted first. Marketplace plugins are one source
- * among many.
+ * The deck stays omp-native: it shows what omp loads, with `native` (the
+ * user's own `~/.omp/agent/skills/`) sorted first. Claude-plugin cache
+ * entries are one source among many.
  *
  * Watcher fan-out (broadcasting `skills_changed`) lives in `skills-watcher.ts`
  * next to the other server-level wiring.
@@ -229,9 +228,9 @@ export class SkillsService {
 
 	/**
 	 * Build a `{ installPath -> { id, name, marketplace } }` index so skills
-	 * whose source path lives under a marketplace install can be attributed
-	 * to their owning plugin. Reads through `MarketplaceService.listInstalled`
-	 * so it's one disk hit, not one per skill.
+	 * whose source path lives under a Claude-plugin cache install can be
+	 * attributed to their owning plugin. Currently a no-op stub — attribution
+	 * is optional and the shop that filled this index is gone.
 	 */
 	private async buildPluginIndex(): Promise<PluginIndex> {
 		return new Map();
