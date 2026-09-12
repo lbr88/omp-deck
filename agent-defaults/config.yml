@@ -326,9 +326,6 @@ astGrep:
   enabled: true
 worktree: 
   base: ""
-extensions: 
-  - C:/Users/PC/.omp/agent/extensions/combo-toggle/index.js
-  - C:/Users/PC/.omp/plugins/node_modules/@dietrichgebert/ponytail/pi-extension/index.js
 generate_image: 
   enabled: true
 codexResets: 

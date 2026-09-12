@@ -5,20 +5,22 @@ The starting contents of the omp agent directory (`~/.omp/agent`, or wherever
 container start.
 
 This exists because a container begins with an empty agent directory. On a
-laptop that directory accumulates over months — skills, extensions,
-rules, MCP servers, model routing — and it is most of what makes the agent
-behave like *yours*. Without a seed, every image rebuild keeps the deck and
-loses the agent's character.
+laptop that directory accumulates over months — skills, extensions, rules,
+MCP servers, model routing — and it is most of what makes the agent behave
+like *yours*. Without a seed, every image rebuild keeps the deck and loses
+the agent's character.
+
+These defaults are intentionally lean: config templates and a standing
+`RULES.md`. Session extensions and marketplace dumps are not bundled here;
+add those in the live agent directory (or via `starter-extensions/`) as
+needed.
 
 ## What's here
 
 | Path | What it is |
 |---|---|
-| `extensions/` | Session extensions loaded by the SDK |
-| `rules/`, `RULES.md`, `AGENTS.md` | Standing instructions |
-| `WATCHDOG.md`, `WATCHDOG.yml` | Watchdog notes and config |
-| `config.yml` | omp agent configuration |
-| `smithery.json` | Smithery registry config |
+| `config.yml` | Lean omp agent configuration |
+| `RULES.md` | Standing instructions |
 | `*.tmpl` | Configs containing credentials — see below |
 
 ## The `.tmpl` files
