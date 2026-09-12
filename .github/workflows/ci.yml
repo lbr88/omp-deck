@@ -88,8 +88,21 @@ jobs:
           echo "=== /api/health ==="
           curl -fs http://127.0.0.1:8787/api/health
           echo
-          echo "=== /api/tasks ==="
-          curl -fs http://127.0.0.1:8787/api/tasks
+          # The image binds 0.0.0.0, so auth is on. Unauthenticated /api/tasks
+          # must 401; the bootstrapped API token must still list tasks.
+          echo "=== /api/tasks (unauthenticated) ==="
+          tasks_code=$(curl -s -o /tmp/ci-tasks-unauth.json -w '%{http_code}' http://127.0.0.1:8787/api/tasks)
+          echo "status ${tasks_code}"
+          if [ "${tasks_code}" != "401" ]; then
+            echo "expected 401 from /api/tasks without credentials"
+            cat /tmp/ci-tasks-unauth.json || true
+            echo
+            exit 1
+          fi
+          TOKEN=$(docker exec omp-deck-ci cat /root/.config/omp-deck/api-token | tr -d '\r\n')
+          echo "=== /api/tasks (bearer) ==="
+          curl -fs -H "Authorization: Bearer ${TOKEN}" http://127.0.0.1:8787/api/tasks
+          echo
 
       - name: cleanup
         if: always()

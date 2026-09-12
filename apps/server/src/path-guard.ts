@@ -32,18 +32,33 @@ export interface GuardResult {
 	reason?: string;
 }
 
+/**
+ * Collapse symlink / macOS `/var` → `/private/var` aliases so containment
+ * compares the same path the candidate is realpath'd to. Without this, a
+ * HOME or workspace root that is a symlink (or a `/var/folders` temp on
+ * macOS) rejects every in-root path as "outside every allowed root".
+ */
+function canonicalizeRoot(root: string): string {
+	const resolved = path.resolve(root);
+	try {
+		return existsSync(resolved) ? realpathSync(resolved) : resolved;
+	} catch {
+		return resolved;
+	}
+}
+
 function workspaceRoots(): string[] {
 	const config = loadConfig();
 	const home = process.env.HOME ?? process.env.USERPROFILE;
 	const roots = [home, config.defaultCwd, ...config.extraWorkspaces].filter(
 		(r): r is string => typeof r === "string" && r.trim().length > 0,
 	);
-	return [...new Set(roots.map((r) => path.resolve(r)))];
+	return [...new Set(roots.map((r) => canonicalizeRoot(r)))];
 }
 
 function agentDirRoot(): string | undefined {
 	const config = loadConfig();
-	return config.agentDir ? path.resolve(config.agentDir) : undefined;
+	return config.agentDir ? canonicalizeRoot(config.agentDir) : undefined;
 }
 
 /**
