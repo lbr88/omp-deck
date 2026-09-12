@@ -38,7 +38,7 @@ export interface GuardResult {
  * HOME or workspace root that is a symlink (or a `/var/folders` temp on
  * macOS) rejects every in-root path as "outside every allowed root".
  */
-function canonicalizeRoot(root: string): string {
+export function canonicalizeRoot(root: string): string {
 	const resolved = path.resolve(root);
 	try {
 		return existsSync(resolved) ? realpathSync(resolved) : resolved;

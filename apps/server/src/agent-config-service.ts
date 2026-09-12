@@ -34,7 +34,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { loadConfig } from "./config.ts";
-import { guardAgentDirPath } from "./path-guard.ts";
+import { canonicalizeRoot, guardAgentDirPath } from "./path-guard.ts";
 import { logger } from "./log.ts";
 
 const log = logger("agent-config-service");
@@ -46,7 +46,10 @@ export class ImportError extends Error {}
 function agentDir(): string {
 	const dir = loadConfig().agentDir;
 	if (!dir) throw new NoAgentDirError("OMP_AGENT_DIR is not configured on this server");
-	return path.resolve(dir);
+	// Same realpath as guardAgentDirPath — otherwise a symlink (or macOS
+	// /var → /private/var) root fails the delete-self identity check and
+	// the live agent directory is removed.
+	return canonicalizeRoot(dir);
 }
 
 /** Files never opened for text editing — live SQLite state, not config. */
