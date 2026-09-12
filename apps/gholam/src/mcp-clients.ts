@@ -149,7 +149,7 @@ export function startParallelMcp(token: string): GithubMcpHandle {
 }
 
 /**
- * Tavily MCP — HTTP, key embedded in the URL (per `agent-defaults/mcp.json.tmpl:75`).
+ * Tavily MCP — HTTP, key embedded in the URL.
  */
 export function startTavilyMcp(apiKey: string): GithubMcpHandle {
 	return startHttpMcpClient(`${TAVILY_URL_BASE}/?tavilyApiKey=${apiKey}`, {});

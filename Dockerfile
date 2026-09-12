@@ -80,15 +80,13 @@ COPY apps/gholam apps/gholam
 # Built web assets.
 COPY --from=web-build /app/apps/web/dist /app/apps/web/dist
 
-# Agent defaults + the entrypoint that seeds them.
+# Entrypoint helper: ensure ~/.omp/agent <-> $OMP_AGENT_DIR stay linked.
 #
-# A container starts with an empty agent directory, so without this a rebuilt
-# image keeps the deck and loses everything that makes the agent yours —
-# subagents, skills, extensions, rules, MCP servers, model routing. The seed
-# script copies these into OMP_AGENT_DIR (never overwriting what's already in
-# the volume) and renders the *.tmpl configs from environment variables, which
-# is how credentials stay out of the image and out of git.
-COPY agent-defaults /app/agent-defaults
+# This image ships with no bundled agent personality. Config lives on the
+# OMP_AGENT_DIR volume. The seed script still runs so slash-commands / skills /
+# agent-host that resolve ~/.omp/agent directly hit the same persistent tree.
+# Optionally mount your own seed and set OMP_DECK_AGENT_DEFAULTS to copy it in
+# on first boot (never overwrites unless OMP_DECK_SEED_FORCE=1).
 COPY scripts/seed-agent-dir.sh /app/scripts/seed-agent-dir.sh
 RUN chmod +x /app/scripts/seed-agent-dir.sh
 
@@ -102,7 +100,7 @@ ENV OMP_DECK_WEB_DIST=/app/apps/web/dist \
 WORKDIR /app/apps/server
 EXPOSE 8787
 
-# Seed the agent directory, then exec the server so it keeps PID 1 and still
+# Link/seed the agent directory, then exec the server so it keeps PID 1 and still
 # receives SIGTERM directly (the compose file relies on that for clean shutdown).
 ENTRYPOINT ["/bin/sh", "-c", "/app/scripts/seed-agent-dir.sh; exec \"$@\"", "--"]
 CMD ["bun", "src/index.ts"]

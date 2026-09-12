@@ -314,8 +314,8 @@ export class DeckLLMRegistry implements DeckLLMProviderRegistry {
 		}
 
 		// Always make sure "minimax" is present even when the custom provider
-		// hasn't loaded yet. Stanza from `agent-defaults/models.yml.tmpl` is
-		// the documented extension point; the SDK picks it up via the hot-
+		// hasn't loaded yet. Operators can still add a custom provider via
+		// models.yml in OMP_AGENT_DIR; the SDK picks it up via the hot-
 		// reload watcher, but a cold-boot request may race the watcher.
 		if (!byProvider.has("minimax")) {
 			byProvider.set("minimax", {

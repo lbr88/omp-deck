@@ -129,9 +129,9 @@ function ensureMcpClients(): { openship?: string; github?: string; parallel?: st
 	return errors;
 }
 
-/** Spawn the github MCP stdio child, mirroring the agent-defaults mcp.json.tmpl
- *  stanza (docker run -i --rm ghcr.io/github/github-mcp-server). Stdout
- *  frames are routed back to the originating socket via `mcp_reply`. */
+/** Spawn the github MCP stdio child (docker run -i --rm
+ *  ghcr.io/github/github-mcp-server). Stdout frames are routed back to the
+ *  originating socket via `mcp_reply`. */
 function sendGithubMcpChild(): McpHandle {
 	const child = Bun.spawn({
 		cmd: [
