@@ -94,6 +94,27 @@ describe("browse and edit", () => {
 		await expect(deleteAgentPath(agentDir)).rejects.toThrow(GuardError);
 	});
 
+	test("deleteAgentPath refuses to delete the agent dir when OMP_AGENT_DIR is a symlink", async () => {
+		// Same /var vs /private/var (and HOME-symlink) mismatch path-guard
+		// now canonicalizes: guard.resolved is realpath'd, so the identity
+		// check must use the same root or the live agent dir is deleted.
+		if (process.platform === "win32") return;
+		const realDir = agentDir;
+		const linkDir = `${realDir}.link`;
+		fs.symlinkSync(realDir, linkDir, "dir");
+		const previous = process.env.OMP_AGENT_DIR;
+		try {
+			process.env.OMP_AGENT_DIR = linkDir;
+			await expect(deleteAgentPath(linkDir)).rejects.toThrow(GuardError);
+			await expect(deleteAgentPath(realDir)).rejects.toThrow(GuardError);
+			expect(fs.existsSync(path.join(realDir, "config.yml"))).toBe(true);
+		} finally {
+			if (previous === undefined) delete process.env.OMP_AGENT_DIR;
+			else process.env.OMP_AGENT_DIR = previous;
+			fs.rmSync(linkDir, { recursive: true, force: true });
+		}
+	});
+
 	test("paths outside OMP_AGENT_DIR are rejected even if they exist on disk", async () => {
 		const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), "omp-deck-agentcfg-outside-"));
 		try {

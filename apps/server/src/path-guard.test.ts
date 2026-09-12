@@ -92,6 +92,36 @@ describe("guardWorkspacePath", () => {
 			fs.rmSync(extra, { recursive: true, force: true });
 		}
 	});
+
+	test("allows a path when HOME is a symlink to the real directory", () => {
+		// macOS CI temps live at /var/folders/... whose realpath is
+		// /private/var/folders/... . Without realpath'ing allowed roots,
+		// containment compares the unresolved root to the resolved target
+		// and rejects every in-home path. Linux can reproduce the same
+		// mismatch with an explicit symlink.
+		if (process.platform === "win32") return;
+		const realHome = fs.mkdtempSync(path.join(os.tmpdir(), "omp-deck-guard-real-"));
+		const linkHome = `${realHome}.link`;
+		fs.mkdirSync(path.join(realHome, "project"), { recursive: true });
+		fs.writeFileSync(path.join(realHome, "project", "index.ts"), "1");
+		fs.symlinkSync(realHome, linkHome, "dir");
+		const previousHome = process.env.HOME;
+		const previousCwd = process.env.OMP_DECK_DEFAULT_CWD;
+		try {
+			process.env.HOME = linkHome;
+			process.env.OMP_DECK_DEFAULT_CWD = linkHome;
+			expect(guardWorkspacePath(path.join(realHome, "project", "index.ts"), { mustExist: true }).ok).toBe(true);
+			expect(guardWorkspacePath(path.join(linkHome, "project", "index.ts"), { mustExist: true }).ok).toBe(true);
+			expect(guardWorkspacePath(linkHome, { mustExist: true }).ok).toBe(true);
+		} finally {
+			if (previousHome === undefined) delete process.env.HOME;
+			else process.env.HOME = previousHome;
+			if (previousCwd === undefined) delete process.env.OMP_DECK_DEFAULT_CWD;
+			else process.env.OMP_DECK_DEFAULT_CWD = previousCwd;
+			fs.rmSync(linkHome, { recursive: true, force: true });
+			fs.rmSync(realHome, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("guardAgentDirPath", () => {
