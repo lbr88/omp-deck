@@ -6,8 +6,9 @@
  * tricks. A move == one transaction that renumbers the destination column.
  */
 
-import type { Task, TaskState } from "@omp-deck/protocol";
+import type { Task, TaskDispatch, TaskState } from "@omp-deck/protocol";
 
+import i18n from "../i18n.ts";
 import { getDb, id, nowIso } from "./index.ts";
 
 interface TaskRow {
@@ -22,6 +23,9 @@ interface TaskRow {
 	updated_at: string;
 	state_entered_at: string;
 	archived_at: string | null;
+	dispatch_json: string | null;
+	energy_tag: "low" | "medium" | "high" | null;
+	assigned_agent: string | null;
 }
 
 interface StateRow {
@@ -43,9 +47,19 @@ function rowToTask(r: TaskRow): Task {
 		createdAt: r.created_at,
 		updatedAt: r.updated_at,
 		stateEnteredAt: r.state_entered_at,
+		assignedAgent: r.assigned_agent,
 	};
 	if (r.cwd !== null) t.cwd = r.cwd;
 	if (r.archived_at !== null) t.archivedAt = r.archived_at;
+	if (r.energy_tag !== null) t.energyTag = r.energy_tag;
+	if (r.dispatch_json !== null) {
+		t.dispatchJson = r.dispatch_json;
+		try {
+			t.dispatch = JSON.parse(r.dispatch_json) as TaskDispatch;
+		} catch {
+			// ignore malformed JSON
+		}
+	}
 	return t;
 }
 
@@ -90,7 +104,7 @@ export function getDefaultState(): TaskState {
 				"SELECT id, name, color, position, is_default FROM task_states ORDER BY position ASC LIMIT 1",
 			)
 			.get() as StateRow | null;
-		if (!any) throw new Error("no task states configured");
+		if (!any) throw new Error(i18n.t("no task states configured"));
 		return rowToState(any);
 	}
 	return rowToState(row);
@@ -112,7 +126,7 @@ export function createState(input: {
 		"INSERT INTO task_states (id, name, color, position) VALUES (?, ?, ?, ?)",
 	).run(stateId, input.name, input.color ?? "#6e6a62", nextPos);
 	const out = getState(stateId);
-	if (!out) throw new Error("createState failed");
+	if (!out) throw new Error(i18n.t("createState failed"));
 	return out;
 }
 
@@ -148,13 +162,16 @@ export function reorderStates(orderedIds: string[]): TaskState[] {
 
 	if (orderedIds.length !== current.length) {
 		throw new Error(
-			`reorderStates: expected ${current.length} ids, got ${orderedIds.length}`,
+			i18n.t("reorderStates: expected {{expected}} ids, got {{got}}", {
+				expected: current.length,
+				got: orderedIds.length,
+			}),
 		);
 	}
 	const seen = new Set<string>();
 	for (const sid of orderedIds) {
-		if (!knownIds.has(sid)) throw new Error(`reorderStates: unknown state id "${sid}"`);
-		if (seen.has(sid)) throw new Error(`reorderStates: duplicate state id "${sid}"`);
+		if (!knownIds.has(sid)) throw new Error(i18n.t("reorderStates: unknown state id \"{{id}}\"", { id: sid }));
+		if (seen.has(sid)) throw new Error(i18n.t("reorderStates: duplicate state id \"{{id}}\"", { id: sid }));
 		seen.add(sid);
 	}
 
@@ -178,7 +195,7 @@ export function deleteState(stateId: string): { reassigned: number } {
 	const db = getDb();
 	const target = getState(stateId);
 	if (!target) return { reassigned: 0 };
-	if (target.isDefault) throw new Error("cannot delete the default state");
+	if (target.isDefault) throw new Error(i18n.t("cannot delete the default state"));
 	const fallback = getDefaultState();
 
 	let reassigned = 0;
@@ -202,7 +219,7 @@ export function listTasks(opts: { includeArchived?: boolean } = {}): Task[] {
 	const where = opts.includeArchived ? "" : "WHERE archived_at IS NULL";
 	const rows = getDb()
 		.query<TaskRow, []>(
-			`SELECT id, display_id, title, body, state_id, order_in_state, cwd, created_at, updated_at, state_entered_at, archived_at
+			`SELECT id, display_id, title, body, state_id, order_in_state, cwd, created_at, updated_at, state_entered_at, archived_at, dispatch_json, energy_tag, assigned_agent
 			 FROM tasks
 			 ${where}
 			 ORDER BY state_id, state_entered_at DESC, order_in_state ASC`,
@@ -214,7 +231,7 @@ export function listTasks(opts: { includeArchived?: boolean } = {}): Task[] {
 export function getTask(taskId: string): Task | undefined {
 	const row = getDb()
 		.query<TaskRow, [string]>(
-			`SELECT id, display_id, title, body, state_id, order_in_state, cwd, created_at, updated_at, state_entered_at, archived_at
+			`SELECT id, display_id, title, body, state_id, order_in_state, cwd, created_at, updated_at, state_entered_at, archived_at, dispatch_json, energy_tag, assigned_agent
 			 FROM tasks WHERE id = ?`,
 		)
 		.get(taskId) as TaskRow | null;
@@ -226,10 +243,13 @@ export function createTask(input: {
 	body?: string;
 	stateId?: string;
 	cwd?: string;
+	energyTag?: "low" | "medium" | "high";
+	dispatchJson?: string;
+	assignedAgent?: string | null;
 }): Task {
 	const db = getDb();
 	const state = input.stateId ? getState(input.stateId) : getDefaultState();
-	if (!state) throw new Error(`unknown state: ${input.stateId}`);
+	if (!state) throw new Error(i18n.t("unknown state: {{state}}", { state: input.stateId }));
 
 	const maxOrder = (db
 		.query<{ max: number | null }, [string]>(
@@ -246,15 +266,46 @@ export function createTask(input: {
 				"UPDATE sequences SET value = value + 1 WHERE name = 'tasks' RETURNING value",
 			)
 			.get() as { value: number } | null;
-		if (!seqRow) throw new Error("tasks sequence missing — migration 002 not applied");
+		if (!seqRow) throw new Error(i18n.t("tasks sequence missing — migration 002 not applied"));
 		displayId = seqRow.value;
-		db.prepare<unknown, [string, number, string, string, string, number, string | null, string, string, string]>(
-			`INSERT INTO tasks (id, display_id, title, body, state_id, order_in_state, cwd, created_at, updated_at, state_entered_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		).run(taskId, displayId, input.title, input.body ?? "", state.id, maxOrder + 1000, input.cwd ?? null, now, now, now);
+		db.prepare<
+			unknown,
+			[
+				string,
+				number,
+				string,
+				string,
+				string,
+				number,
+				string | null,
+				string,
+				string,
+				string,
+				string | null,
+				string | null,
+				string | null,
+			]
+		>(
+			`INSERT INTO tasks (id, display_id, title, body, state_id, order_in_state, cwd, created_at, updated_at, state_entered_at, dispatch_json, energy_tag, assigned_agent)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		).run(
+			taskId,
+			displayId,
+			input.title,
+			input.body ?? "",
+			state.id,
+			maxOrder + 1000,
+			input.cwd ?? null,
+			now,
+			now,
+			now,
+			input.dispatchJson ?? null,
+			input.energyTag ?? null,
+			input.assignedAgent ?? null,
+		);
 	})();
 	const out = getTask(taskId);
-	if (!out) throw new Error("createTask failed");
+	if (!out) throw new Error(i18n.t("createTask failed"));
 	return out;
 }
 
@@ -267,6 +318,9 @@ export function updateTask(
 		orderInState?: number;
 		cwd?: string;
 		archived?: boolean;
+		energyTag?: "low" | "medium" | "high" | null;
+		dispatchJson?: string | null;
+		assignedAgent?: string | null;
 	},
 ): Task | undefined {
 	const existing = getTask(taskId);
@@ -280,13 +334,32 @@ export function updateTask(
 	// edits must NOT reset the per-column recency sort.
 	const stateChanged = patch.stateId !== undefined && patch.stateId !== existing.stateId;
 	const stateEnteredAt = stateChanged ? nowIso() : existing.stateEnteredAt;
+	const dispatchJson =
+		patch.dispatchJson !== undefined ? patch.dispatchJson : (existing.dispatchJson ?? null);
+	const energyTag =
+		patch.energyTag !== undefined ? patch.energyTag : (existing.energyTag ?? null);
+	const assignedAgent = patch.assignedAgent === undefined ? existing.assignedAgent : patch.assignedAgent;
 	db.prepare<
 		unknown,
-		[string, string, string, number, string | null, string, string, string | null, string]
+		[
+			string,
+			string,
+			string,
+			number,
+			string | null,
+			string,
+			string,
+			string | null,
+			string | null,
+			string | null,
+			string | null,
+			string,
+		]
 	>(
 		`UPDATE tasks
 		   SET title = ?, body = ?, state_id = ?, order_in_state = ?, cwd = ?,
-		       updated_at = ?, state_entered_at = ?, archived_at = ?
+		       updated_at = ?, state_entered_at = ?, archived_at = ?,
+		       dispatch_json = ?, energy_tag = ?, assigned_agent = ?
 		 WHERE id = ?`,
 	).run(
 		next.title,
@@ -297,6 +370,9 @@ export function updateTask(
 		nowIso(),
 		stateEnteredAt,
 		archivedAt,
+		dispatchJson,
+		energyTag,
+		assignedAgent,
 		taskId,
 	);
 	return getTask(taskId);
@@ -320,7 +396,7 @@ export function moveTask(taskId: string, stateId: string, index: number): Task |
 	const existing = getTask(taskId);
 	if (!existing) return undefined;
 	const targetState = getState(stateId);
-	if (!targetState) throw new Error(`unknown state: ${stateId}`);
+	if (!targetState) throw new Error(i18n.t("unknown state: {{state}}", { state: stateId }));
 
 	const crossColumn = existing.stateId !== stateId;
 
@@ -407,7 +483,7 @@ export function findStateByName(needle: string): TaskState | undefined {
 	if (matches.length === 1) return matches[0];
 	if (matches.length > 1) {
 		const names = matches.map((m) => m.name).join(", ");
-		throw new Error(`ambiguous state "${needle}" — matches: ${names}`);
+		throw new Error(i18n.t("ambiguous state \"{{needle}}\" — matches: {{names}}", { needle, names }));
 	}
 	return undefined;
 }

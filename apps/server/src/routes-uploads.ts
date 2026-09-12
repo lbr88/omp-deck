@@ -21,6 +21,7 @@ import { createHash } from "node:crypto";
 
 import { Hono } from "hono";
 
+import i18n from "./i18n";
 import { logger } from "./log.ts";
 
 const log = logger("routes:uploads");
@@ -81,6 +82,14 @@ export interface SavedUpload {
 }
 
 /**
+ * Validation failure caused by the client (bad type, empty, oversized) rather
+ * than a server fault. The HTTP layer maps it to 400. Classified by kind —
+ * not by message text — so the status stays correct once the message is
+ * translated (i18n) and is no longer greppable in English.
+ */
+export class UploadInputError extends Error {}
+
+/**
  * Internal: persist a single in-memory image to disk under the content-addressed
  * path. Exported for the unit tests; the HTTP layer wraps it with validation.
  */
@@ -92,10 +101,15 @@ export async function persistImage(
 	now: Date = new Date(),
 ): Promise<SavedUpload> {
 	const ext = ACCEPTED_MIME[mimeType];
-	if (!ext) throw new Error(`unsupported image type: ${mimeType}`);
-	if (bytes.byteLength === 0) throw new Error("empty upload");
+	if (!ext) throw new UploadInputError(i18n.t("unsupported image type: {{mimeType}}", { mimeType }));
+	if (bytes.byteLength === 0) throw new UploadInputError(i18n.t("empty upload"));
 	if (bytes.byteLength > MAX_BYTES) {
-		throw new Error(`upload exceeds ${MAX_BYTES} bytes (got ${bytes.byteLength})`);
+		throw new UploadInputError(
+			i18n.t("upload exceeds {{maxBytes}} bytes (got {{actualBytes}})", {
+				maxBytes: MAX_BYTES,
+				actualBytes: bytes.byteLength,
+			}),
+		);
 	}
 
 	const hash = createHash("sha256").update(bytes).digest("hex").slice(0, 32);
@@ -145,7 +159,7 @@ export function buildUploadsRouter(config: UploadsConfig): Hono {
 				const form = await c.req.formData();
 				const file = form.get("file");
 				if (!(file instanceof File)) {
-					return c.json({ error: "multipart upload requires 'file' field" }, 400);
+					return c.json({ error: i18n.t("multipart upload requires 'file' field") }, 400);
 				}
 				bytes = new Uint8Array(await file.arrayBuffer());
 				mimeType = (file.type || "").toLowerCase();
@@ -157,24 +171,24 @@ export function buildUploadsRouter(config: UploadsConfig): Hono {
 			} else {
 				return c.json(
 					{
-						error:
+						error: i18n.t(
 							"send either multipart/form-data with a 'file' field, or a raw body with content-type: image/*",
+						),
 					},
 					400,
 				);
 			}
 
 			if (!ACCEPTED_MIME[mimeType]) {
-				return c.json({ error: `unsupported image type: ${mimeType}` }, 415);
+				return c.json({ error: i18n.t("unsupported image type: {{mimeType}}", { mimeType }) }, 415);
 			}
 
 			const saved = await persistImage(config.uploadsRoot, bytes, mimeType, displayName);
 			return c.json(saved, 201);
 		} catch (err) {
 			const msg = String(err instanceof Error ? err.message : err);
-			// Size and unsupported-type failures are user errors; everything else is 500.
-			const status =
-				/exceeds|empty upload|unsupported image type/.test(msg) ? 400 : 500;
+			// Size/type/empty failures are user errors; everything else is 500.
+			const status = err instanceof UploadInputError ? 400 : 500;
 			if (status === 500) log.error(`upload failed`, err);
 			return c.json({ error: msg }, status);
 		}

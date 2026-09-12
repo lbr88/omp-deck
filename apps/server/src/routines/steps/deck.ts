@@ -1,5 +1,6 @@
 import type { RoutineStep } from "@omp-deck/protocol";
 
+import i18n from "../../i18n.ts";
 import { createInbox, getInbox, listInbox, updateInbox } from "../../db/inbox.ts";
 import {
 	createTask,
@@ -40,7 +41,11 @@ export async function executeDeckStep(
 				});
 				return ok(
 					startedMs,
-					`created inbox item ${item.id} (${item.kind}): ${item.title}`,
+					i18n.t("created inbox item {{id}} ({{kind}}): {{title}}", {
+						id: item.id,
+						kind: item.kind,
+						title: item.title,
+					}),
 					item,
 				);
 			}
@@ -61,17 +66,21 @@ export async function executeDeckStep(
 							? undefined
 							: renderString(step.cwd, context as unknown as Record<string, unknown>),
 				});
-				return ok(startedMs, `created task T-${task.displayId}: ${task.title}`, task);
+				return ok(
+					startedMs,
+					i18n.t("created task T-{{id}}: {{title}}", { id: task.displayId, title: task.title }),
+					task,
+				);
 			}
 			case "move_task": {
 				const taskRef = renderString(step.task_ref, context as unknown as Record<string, unknown>);
 				const stateRef = renderString(step.state_ref, context as unknown as Record<string, unknown>);
 				const task = findTaskByDisplayOrId(taskRef);
-				if (!task) return fail(startedMs, `task not found: ${taskRef}`);
+				if (!task) return fail(startedMs, i18n.t("task not found: {{ref}}", { ref: taskRef }));
 				const destStateId = resolveStateRef(stateRef);
 				const sourceStateId = task.stateId;
 				const moved = moveTask(task.id, destStateId, step.index ?? 0);
-				if (!moved) return fail(startedMs, `move failed for task: ${taskRef}`);
+				if (!moved) return fail(startedMs, i18n.t("move failed for task: {{ref}}", { ref: taskRef }));
 				// Notify only on the agent-initiated transition INTO s_done. User
 				// drags + slash-command moves don't reach this code path. We gate
 				// on the actual state flip (sourceStateId != destStateId) so
@@ -80,28 +89,44 @@ export async function executeDeckStep(
 					void notificationService.notify({
 						level: "info",
 						sound: true,
-						title: `Agent shipped: ${moved.title}`,
+						title: i18n.t("Agent shipped: {{title}}", { title: moved.title }),
 						body: `T-${moved.displayId}`,
 						source: `routine:${context.run.id}/task:${moved.id}`,
 					});
 				}
-				return ok(startedMs, `moved task T-${moved.displayId} -> ${moved.stateId} @${step.index ?? 0}`, moved);
+				return ok(
+					startedMs,
+					i18n.t("moved task T-{{id}} -> {{state}} @{{index}}", {
+						id: moved.displayId,
+						state: moved.stateId,
+						index: step.index ?? 0,
+					}),
+					moved,
+				);
 			}
 			case "promote_inbox_item_to_task": {
 				const inboxRef = renderString(step.inbox_ref, context as unknown as Record<string, unknown>);
 				const item = getInbox(inboxRef);
-				if (!item) return fail(startedMs, `inbox item not found: ${inboxRef}`);
+				if (!item) return fail(startedMs, i18n.t("inbox item not found: {{ref}}", { ref: inboxRef }));
 				const stateId =
 					step.state_ref === undefined
 						? getDefaultState().id
 						: resolveStateRef(renderString(step.state_ref, context as unknown as Record<string, unknown>));
 				const stamp = new Date(item.createdAt).toISOString().slice(0, 10);
-				const provenance = `_Promoted from inbox · ${item.kind} · ${stamp} · ${item.id}_`;
+				const provenance = `_${i18n.t("Promoted from inbox · {{kind}} · {{stamp}} · {{id}}", {
+					kind: item.kind,
+					stamp,
+					id: item.id,
+				})}_`;
 				const taskBody = item.body.trim().length > 0 ? `${item.body}\n\n---\n${provenance}` : provenance;
 				const task = createTask({ title: item.title, body: taskBody, stateId });
 				const shouldMark = step.mark_processed !== false;
 				const inbox = shouldMark ? updateInbox(item.id, { processed: true }) ?? item : item;
-				return ok(startedMs, `promoted inbox ${item.id} -> T-${task.displayId}`, { task, inbox });
+				return ok(
+					startedMs,
+					i18n.t("promoted inbox {{id}} -> T-{{task}}", { id: item.id, task: task.displayId }),
+					{ task, inbox },
+				);
 			}
 			case "list_tasks": {
 				const stateFilterId =
@@ -132,7 +157,7 @@ export async function executeDeckStep(
 					updatedAt: t.updatedAt,
 					createdAt: t.createdAt,
 				}));
-				return ok(startedMs, `listed ${summaries.length} task(s)`, summaries);
+				return ok(startedMs, i18n.t("listed {{count}} task(s)", { count: summaries.length }), summaries);
 			}
 			case "list_inbox": {
 				const cutoffMs =
@@ -154,7 +179,7 @@ export async function executeDeckStep(
 					createdAt: i.createdAt,
 					processedAt: i.processedAt,
 				}));
-				return ok(startedMs, `listed ${summaries.length} inbox item(s)`, summaries);
+				return ok(startedMs, i18n.t("listed {{count}} inbox item(s)", { count: summaries.length }), summaries);
 			}
 			case "get_task": {
 				const ref = renderString(
@@ -162,8 +187,12 @@ export async function executeDeckStep(
 					context as unknown as Record<string, unknown>,
 				);
 				const task = findTaskByDisplayOrId(ref) ?? getTask(ref);
-				if (!task) return fail(startedMs, `task not found: ${ref}`);
-				return ok(startedMs, `fetched task T-${task.displayId}: ${task.title}`, task);
+				if (!task) return fail(startedMs, i18n.t("task not found: {{ref}}", { ref }));
+				return ok(
+					startedMs,
+					i18n.t("fetched task T-{{id}}: {{title}}", { id: task.displayId, title: task.title }),
+					task,
+				);
 			}
 			case "get_inbox_item": {
 				const ref = renderString(
@@ -171,8 +200,12 @@ export async function executeDeckStep(
 					context as unknown as Record<string, unknown>,
 				);
 				const item = getInbox(ref);
-				if (!item) return fail(startedMs, `inbox item not found: ${ref}`);
-				return ok(startedMs, `fetched inbox ${item.id}: ${item.title}`, item);
+				if (!item) return fail(startedMs, i18n.t("inbox item not found: {{ref}}", { ref }));
+				return ok(
+					startedMs,
+					i18n.t("fetched inbox {{id}}: {{title}}", { id: item.id, title: item.title }),
+					item,
+				);
 			}
 		}
 	} catch (err) {
@@ -185,7 +218,7 @@ function resolveStateRef(ref: string): string {
 	if (exact) return exact.id;
 	const byName = findStateByName(ref);
 	if (byName) return byName.id;
-	throw new Error(`unknown state_ref: ${ref}`);
+	throw new Error(i18n.t("unknown state_ref: {{ref}}", { ref }));
 }
 
 function ok(startedMs: number, stdoutExcerpt: string, json: unknown): StepResult {

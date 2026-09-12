@@ -10,6 +10,7 @@ import type {
 
 import { createInbox, deleteInbox, getInbox, listInbox, updateInbox } from "./db/inbox.ts";
 import { createTask, getDefaultState, getState } from "./db/tasks.ts";
+import i18n from "./i18n";
 
 const KINDS: ReadonlySet<InboxKind> = new Set([
 	"email",
@@ -38,9 +39,9 @@ export function buildInboxRouter(): Hono {
 		try {
 			body = (await c.req.json()) as CreateInboxItemRequest;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
-		if (!body.title || !body.kind) return c.json({ error: "title and kind required" }, 400);
+		if (!body.title || !body.kind) return c.json({ error: i18n.t("title and kind required") }, 400);
 		try {
 			const item = createInbox(body);
 			return c.json(item, 201);
@@ -51,7 +52,7 @@ export function buildInboxRouter(): Hono {
 
 	app.get("/inbox/:id", (c) => {
 		const i = getInbox(c.req.param("id"));
-		if (!i) return c.json({ error: "not found" }, 404);
+		if (!i) return c.json({ error: i18n.t("not found") }, 404);
 		return c.json(i);
 	});
 
@@ -60,11 +61,11 @@ export function buildInboxRouter(): Hono {
 		try {
 			body = (await c.req.json()) as UpdateInboxItemRequest;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		try {
 			const updated = updateInbox(c.req.param("id"), body);
-			if (!updated) return c.json({ error: "not found" }, 404);
+			if (!updated) return c.json({ error: i18n.t("not found") }, 404);
 			return c.json(updated);
 		} catch (err) {
 			return c.json({ error: String(err) }, 400);
@@ -79,7 +80,7 @@ export function buildInboxRouter(): Hono {
 	app.post("/inbox/:id/promote", async (c) => {
 		const itemId = c.req.param("id");
 		const item = getInbox(itemId);
-		if (!item) return c.json({ error: "not found" }, 404);
+		if (!item) return c.json({ error: i18n.t("not found") }, 404);
 
 		let body: PromoteInboxItemRequest = {};
 		// Body is optional — accept missing/empty JSON without bouncing the request.
@@ -87,20 +88,24 @@ export function buildInboxRouter(): Hono {
 			const raw = await c.req.text();
 			if (raw.trim().length > 0) body = JSON.parse(raw) as PromoteInboxItemRequest;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 
 		// Validate stateId up front so a typo doesn't half-promote (task created,
 		// inbox marked processed) before the createTask path fails.
 		if (body.stateId && !getState(body.stateId)) {
-			return c.json({ error: `unknown stateId: ${body.stateId}` }, 400);
+			return c.json({ error: i18n.t("unknown stateId: {{stateId}}", { stateId: body.stateId }) }, 400);
 		}
 		const stateId = body.stateId ?? getDefaultState().id;
 
 		// Provenance footer keeps the link back to the inbox item so the user can
 		// trace where the task originated even after the inbox is cleared out.
 		const stamp = new Date(item.createdAt).toISOString().slice(0, 10);
-		const provenance = `_Promoted from inbox · ${item.kind} · ${stamp} · ${item.id}_`;
+		const provenance = i18n.t("_Promoted from inbox · {{kind}} · {{stamp}} · {{id}}_", {
+			kind: item.kind,
+			stamp,
+			id: item.id,
+		});
 		const taskBody = item.body.trim().length > 0
 			? `${item.body}\n\n---\n${provenance}`
 			: provenance;

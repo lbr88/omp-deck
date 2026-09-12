@@ -4,8 +4,10 @@
  */
 
 import type { RoutineStep } from "@omp-deck/protocol";
+import i18n from "../../i18n.ts";
 import { renderString } from "../template.ts";
 import type { RunContext, StepResult } from "../types.ts";
+import { routineRunSpawnEnv } from "../../spawn-env.ts";
 
 const MAX_EXCERPT = 8 * 1024;
 
@@ -26,6 +28,11 @@ export async function executeRunStep(
 	try {
 		const proc = Bun.spawn(cmd, {
 			cwd,
+			// SECURITY-027: routine bodies are less-trusted than interactive
+			// user shells — imported or sync'd routines can be hostile. Strip
+			// provider secrets; only path/home/tmp/locale + internal-runner
+			// tokens survive. See apps/server/src/spawn-env.ts.
+			env: routineRunSpawnEnv(),
 			stdin: "ignore",
 			stdout: "pipe",
 			stderr: "pipe",
@@ -51,7 +58,7 @@ export async function executeRunStep(
 					status: "aborted",
 					stdoutExcerpt: stdout,
 					stderrExcerpt: stderr,
-					error: "aborted",
+					error: i18n.t("aborted"),
 					durationMs,
 				};
 			}
@@ -60,7 +67,7 @@ export async function executeRunStep(
 				status,
 				stdoutExcerpt: stdout,
 				stderrExcerpt: stderr,
-				error: status === "failed" ? `exit code ${exitCode}` : undefined,
+				error: status === "failed" ? i18n.t("exit code {{code}}", { code: exitCode }) : undefined,
 				durationMs,
 			};
 		} finally {

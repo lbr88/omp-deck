@@ -3,6 +3,7 @@
  */
 
 import type { RoutineStep } from "@omp-deck/protocol";
+import i18n from "../../i18n.ts";
 import type { StepResult } from "../types.ts";
 
 export async function executeWaitStep(
@@ -24,13 +25,13 @@ export async function executeWaitStep(
 			status: "aborted",
 			stdoutExcerpt: "",
 			stderrExcerpt: "",
-			error: "aborted during wait",
+			error: i18n.t("aborted during wait"),
 			durationMs: Date.now() - startedMs,
 		};
 	}
 	return {
 		status: "success",
-		stdoutExcerpt: `waited ${step.duration_secs}s`,
+		stdoutExcerpt: i18n.t("waited {{secs}}s", { secs: step.duration_secs }),
 		stderrExcerpt: "",
 		durationMs: Date.now() - startedMs,
 	};

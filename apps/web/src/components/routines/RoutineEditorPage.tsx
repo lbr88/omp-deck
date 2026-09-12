@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import type { Routine, RoutineActionKind } from "@omp-deck/protocol";
 
 import { routinesApi } from "@/lib/routines-api";
 
 import { RoutineBuilder } from "./RoutineBuilder";
+
+import { RichEditor } from "@/components/RichEditor";
 
 type Mode = "v0" | "v1";
 
@@ -16,6 +19,7 @@ interface Props {
 }
 
 export function RoutineEditorPage({ routine, onBack, onSaved, onDeleted }: Props) {
+	const { t } = useTranslation();
 	const isNew = routine === "new";
 	const existingMode: Mode = !isNew && routine.specVersion === 1 ? "v1" : "v0";
 	const [mode, setMode] = useState<Mode>(isNew ? "v1" : existingMode);
@@ -29,7 +33,7 @@ export function RoutineEditorPage({ routine, onBack, onSaved, onDeleted }: Props
 
 	async function remove(): Promise<void> {
 		if (isNew) return;
-		if (!confirm(`Delete routine "${routine.name}"?`)) return;
+		if (!confirm(t('Delete routine "{{name}}"?', { name: routine.name }))) return;
 		try {
 			await routinesApi.remove(routine.id);
 			onDeleted(routine.id);
@@ -38,8 +42,8 @@ export function RoutineEditorPage({ routine, onBack, onSaved, onDeleted }: Props
 		}
 	}
 
-	const title = isNew ? "New routine" : routine.name || "Untitled routine";
-	const description = isNew ? "Create a multi-step pipeline or a legacy single-action cron job." : routine.description;
+	const title = isNew ? t("New routine") : routine.name || t("Untitled routine");
+	const description = isNew ? t("Create a multi-step pipeline or a legacy single-action cron job.") : routine.description;
 
 	return (
 		<div className="flex h-full min-h-0 flex-col bg-paper">
@@ -47,7 +51,7 @@ export function RoutineEditorPage({ routine, onBack, onSaved, onDeleted }: Props
 				<div className="flex items-center gap-2">
 					<button type="button" onClick={onBack} className="btn-ghost h-7 px-2 text-xs">
 						<ArrowLeft className="h-3.5 w-3.5" />
-						All routines
+						{t("All routines")}
 					</button>
 					<span className="chip bg-paper-3 text-ink-3">{mode === "v1" ? "pipeline" : "single-action"}</span>
 					{isNew ? (
@@ -57,21 +61,21 @@ export function RoutineEditorPage({ routine, onBack, onSaved, onDeleted }: Props
 								onClick={() => setMode("v1")}
 								className={`rounded px-2 py-0.5 font-mono text-2xs uppercase tracking-meta ${mode === "v1" ? "bg-ink text-paper-2" : "text-ink-3 hover:text-ink"}`}
 							>
-								Pipeline
+								{t("Pipeline")}
 							</button>
 							<button
 								type="button"
 								onClick={() => setMode("v0")}
 								className={`rounded px-2 py-0.5 font-mono text-2xs uppercase tracking-meta ${mode === "v0" ? "bg-ink text-paper-2" : "text-ink-3 hover:text-ink"}`}
 							>
-								Single-action
+								{t("Single-action")}
 							</button>
 						</div>
 					) : null}
 					{!isNew ? (
 						<button type="button" onClick={() => void remove()} className="btn-ghost ml-auto h-7 px-2 text-xs text-danger">
 							<Trash2 className="h-3.5 w-3.5" />
-							Delete
+							{t("Delete")}
 						</button>
 					) : null}
 				</div>
@@ -81,7 +85,7 @@ export function RoutineEditorPage({ routine, onBack, onSaved, onDeleted }: Props
 					{!isNew ? (
 						<div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-2xs text-ink-3">
 							<span>{routine.id}</span>
-							<span>updated {new Date(routine.updatedAt).toLocaleString()}</span>
+							<span>{t("updated {{date}}", { date: new Date(routine.updatedAt).toLocaleString() })}</span>
 						</div>
 					) : null}
 				</div>
@@ -127,6 +131,7 @@ function V0EditorPage({
 	onSaved: (saved: Routine) => void;
 	onError: (msg: string) => void;
 }) {
+	const { t } = useTranslation();
 	const isNew = routine === "new";
 	const initial = useMemo(
 		() =>
@@ -218,25 +223,25 @@ function V0EditorPage({
 	return (
 		<div className="mx-auto flex h-full max-w-3xl flex-col px-3 py-3">
 			<div className="flex-1 space-y-4 overflow-y-auto rounded-lg border border-line bg-paper px-3 py-3">
-				<Field label="Name">
+				<Field label={t("Name")}>
 					<input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="daily inbox sweep" className="field h-8 w-full px-2 text-sm" />
 				</Field>
-				<Field label="Description">
-					<input value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="optional" className="field h-8 w-full px-2 text-sm" />
+				<Field label={t("Description")}>
+					<input value={form.description} onChange={(e) => update("description", e.target.value)} placeholder={t("optional")} className="field h-8 w-full px-2 text-sm" />
 				</Field>
-				<Field label="Cron">
+				<Field label={t("Cron")}>
 					<input value={form.cron} onChange={(e) => update("cron", e.target.value)} placeholder="0 9 * * *" className="field h-8 w-full px-2 font-mono text-sm" />
 					<div className="mt-1.5 flex flex-wrap gap-1">
 						{PRESET_CRONS.map((p) => (
 							<button key={p.expr} type="button" onClick={() => update("cron", p.expr)} className="rounded border border-line bg-paper-2 px-1.5 py-0.5 font-mono text-2xs text-ink-3 hover:bg-paper-3 hover:text-ink">
-								{p.label}
+								{t(p.label)}
 							</button>
 						))}
 					</div>
 					{cronPreview ? (
 						cronPreview.valid ? (
 							<div className="mt-2 rounded border border-success/30 bg-success/5 px-2 py-1.5">
-								<div className="meta mb-0.5 text-success">Next {cronPreview.nextRuns.length}</div>
+								<div className="meta mb-0.5 text-success">{t("Next {{count}}", { count: cronPreview.nextRuns.length })}</div>
 								<ul className="space-y-0.5 font-mono text-2xs text-ink-2">
 									{cronPreview.nextRuns.map((iso) => <li key={iso}>{new Date(iso).toLocaleString()}</li>)}
 								</ul>
@@ -246,7 +251,7 @@ function V0EditorPage({
 						)
 					) : null}
 				</Field>
-				<Field label="Action">
+				<Field label={t("Action")}>
 					<div className="flex gap-1">
 						{KINDS.map((k) => (
 							<button key={k.value} type="button" onClick={() => update("actionKind", k.value)} className={`rounded border px-2 py-0.5 font-mono text-2xs uppercase tracking-meta ${form.actionKind === k.value ? "border-ink bg-ink text-paper-2" : "border-line text-ink-3 hover:text-ink"}`}>
@@ -254,16 +259,33 @@ function V0EditorPage({
 							</button>
 						))}
 					</div>
-					<textarea value={form.actionBody} onChange={(e) => update("actionBody", e.target.value)} rows={6} placeholder={KINDS.find((k) => k.value === form.actionKind)?.placeholder ?? ""} className="field mt-1.5 w-full resize-y px-2 py-1.5 font-mono text-xs leading-relaxed" />
+					{form.actionKind === "prompt" ? (
+						<RichEditor
+							value={form.actionBody}
+							onChange={(v) => update("actionBody", v)}
+							rows={6}
+							placeholder={KINDS.find((k) => k.value === form.actionKind)?.placeholder ?? ""}
+							disableRichText={false}
+							className="field mt-1.5 w-full resize-y px-2 py-1.5 font-mono text-xs leading-relaxed"
+						/>
+					) : (
+						<textarea
+							value={form.actionBody}
+							onChange={(e) => update("actionBody", e.target.value)}
+							rows={6}
+							placeholder={KINDS.find((k) => k.value === form.actionKind)?.placeholder ?? ""}
+							className="field mt-1.5 w-full resize-y px-2 py-1.5 font-mono text-xs leading-relaxed"
+						/>
+					)}
 				</Field>
-				<Field label="Working directory (optional)">
-					<input value={form.actionCwd} onChange={(e) => update("actionCwd", e.target.value)} placeholder="defaults to server cwd" className="field h-8 w-full px-2 font-mono text-xs" />
+				<Field label={t("Working directory (optional)")}>
+					<input value={form.actionCwd} onChange={(e) => update("actionCwd", e.target.value)} placeholder={t("defaults to server cwd")} className="field h-8 w-full px-2 font-mono text-xs" />
 				</Field>
-				<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.enabled} onChange={(e) => update("enabled", e.target.checked)} /><span>Enabled</span></label>
+				<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.enabled} onChange={(e) => update("enabled", e.target.checked)} /><span>{t("Enabled")}</span></label>
 			</div>
 			<div className="flex shrink-0 justify-end border-t border-line bg-paper py-2">
 				<button type="button" onClick={() => void save()} disabled={busy || !form.name.trim() || !form.cron.trim() || !form.actionBody.trim()} className="btn-primary px-3 py-1.5 text-xs">
-					{isNew ? "Create" : "Save"}
+					{isNew ? t("Create") : t("Save")}
 				</button>
 			</div>
 		</div>

@@ -14,6 +14,7 @@ import type {
 import { validateRoutineSpec } from "@omp-deck/protocol";
 
 import { logger } from "./log.ts";
+import i18n from "./i18n";
 import {
 	createRoutine,
 	createV1Routine,
@@ -49,7 +50,7 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 		try {
 			body = (await c.req.json()) as CreateRoutineRequest & { specYaml?: string };
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		// V1 routine: presence of specYaml is the discriminator.
 		if (body.specYaml) {
@@ -57,7 +58,7 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 				const spec = parseYaml(body.specYaml) as unknown;
 				const result = validateRoutineSpec(spec);
 				if (!result.valid) {
-					return c.json({ error: "invalid spec", details: result.errors }, 400);
+					return c.json({ error: i18n.t("invalid spec"), details: result.errors }, 400);
 				}
 				const typed = spec as RoutineSpec;
 				const routine = createV1Routine({
@@ -77,7 +78,7 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 		}
 		// V0 path (legacy single-action routine).
 		if (!body.name || !body.cron || !body.actionKind || body.actionBody === undefined) {
-			return c.json({ error: "name, cron, actionKind, actionBody required (or pass specYaml for V1)" }, 400);
+			return c.json({ error: i18n.t("name, cron, actionKind, actionBody required (or pass specYaml for V1)") }, 400);
 		}
 		try {
 			const routine = createRoutine(body);
@@ -91,7 +92,7 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 
 	app.get("/routines/:id", (c) => {
 		const r = getRoutine(c.req.param("id"));
-		if (!r) return c.json({ error: "not found" }, 404);
+		if (!r) return c.json({ error: i18n.t("not found") }, 404);
 		return c.json(r);
 	});
 
@@ -100,11 +101,11 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 		try {
 			body = (await c.req.json()) as UpdateRoutineRequest & { specYaml?: string };
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		const id = c.req.param("id");
 		const existing = getRoutine(id);
-		if (!existing) return c.json({ error: "not found" }, 404);
+		if (!existing) return c.json({ error: i18n.t("not found") }, 404);
 		// V1 routine: validate + persist spec_yaml; allow enabled-only patches too.
 		if (existing.specVersion === 1) {
 			if (body.specYaml !== undefined) {
@@ -112,7 +113,7 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 					const spec = parseYaml(body.specYaml) as unknown;
 					const result = validateRoutineSpec(spec);
 					if (!result.valid) {
-						return c.json({ error: "invalid spec", details: result.errors }, 400);
+						return c.json({ error: i18n.t("invalid spec"), details: result.errors }, 400);
 					}
 					const typed = spec as RoutineSpec;
 					const updated = updateV1Routine(id, {
@@ -122,7 +123,7 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 						spec: typed,
 						enabled: body.enabled,
 					});
-					if (!updated) return c.json({ error: "not found" }, 404);
+					if (!updated) return c.json({ error: i18n.t("not found") }, 404);
 					registerWebhookTriggers(typed, updated.id);
 					runner.schedule(updated);
 					return c.json(updated);
@@ -137,13 +138,13 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 				description: body.description,
 				enabled: body.enabled,
 			});
-			if (!updated) return c.json({ error: "not found" }, 404);
+			if (!updated) return c.json({ error: i18n.t("not found") }, 404);
 			runner.schedule(updated);
 			return c.json(updated);
 		}
 		// V0 path.
 		const updated = updateRoutine(id, body);
-		if (!updated) return c.json({ error: "not found" }, 404);
+		if (!updated) return c.json({ error: i18n.t("not found") }, 404);
 		runner.schedule(updated);
 		return c.json(updated);
 	});
@@ -158,7 +159,7 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 	app.post("/routines/:id/run", async (c) => {
 		const id = c.req.param("id");
 		const r = getRoutine(id);
-		if (!r) return c.json({ error: "not found" }, 404);
+		if (!r) return c.json({ error: i18n.t("not found") }, 404);
 		let payload: Record<string, unknown> = {};
 		try {
 			const text = await c.req.text();
@@ -199,20 +200,20 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 		const id = c.req.param("id");
 		const r = getRoutine(id);
 		if (!r || r.specVersion !== 1 || !r.specYaml) {
-			return c.json({ error: "V1 routine with webhook trigger required" }, 404);
+			return c.json({ error: i18n.t("V1 routine with webhook trigger required") }, 404);
 		}
 		const spec = (() => {
 			try { return parseYaml(r.specYaml) as RoutineSpec; } catch { return null; }
 		})();
-		if (!spec) return c.json({ error: "spec parse failure" }, 400);
+		if (!spec) return c.json({ error: i18n.t("spec parse failure") }, 400);
 		const webhookTrigger = spec.trigger.find((t) => "webhook" in t) as { webhook: { path: string } } | undefined;
 		if (!webhookTrigger) {
-			return c.json({ error: "routine has no webhook trigger" }, 400);
+			return c.json({ error: i18n.t("routine has no webhook trigger") }, 400);
 		}
 		const secret = randomBytes(32).toString("base64url");
 		const hash = hashSecretForStorage(secret);
 		const registered = upsertWebhookSecret({ routineId: id, path: webhookTrigger.webhook.path, secretHash: hash });
-		if (!registered) return c.json({ error: "webhook path already in use" }, 409);
+		if (!registered) return c.json({ error: i18n.t("webhook path already in use") }, 409);
 		return c.json({ ok: true, secret, path: webhookTrigger.webhook.path });
 	});
 
@@ -225,10 +226,10 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 	app.post("/routine-templates/:slug", (c) => {
 		const slug = c.req.param("slug");
 		const loaded = loadTemplate(slug);
-		if (!loaded) return c.json({ error: "template not found" }, 404);
+		if (!loaded) return c.json({ error: i18n.t("template not found") }, 404);
 		const validation = validateRoutineSpec(loaded.spec);
 		if (!validation.valid) {
-			return c.json({ error: "template spec is invalid", details: validation.errors }, 500);
+			return c.json({ error: i18n.t("template spec is invalid"), details: validation.errors }, 500);
 		}
 		const routine = createV1Routine({
 			name: loaded.spec.name,
@@ -249,7 +250,7 @@ export function buildRoutinesRouter(runner: RoutinesRunner): Hono {
 	app.get("/routines/:id/metrics", (c) => {
 		const id = c.req.param("id");
 		const r = getRoutine(id);
-		if (!r) return c.json({ error: "not found" }, 404);
+		if (!r) return c.json({ error: i18n.t("not found") }, 404);
 		const runs = listRuns(id, 100);
 		const last30 = runs.slice(0, 30);
 		const successCount = last30.filter((x) => x.endedAt && !x.abortReason && x.exitCode === 0).length;

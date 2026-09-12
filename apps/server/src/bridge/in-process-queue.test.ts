@@ -87,6 +87,12 @@ function makeHandle(): { handle: InProcessSessionHandle; session: StubSession; e
 		cwd: "/tmp/stub",
 		sessionId: "stub-1",
 		getModelRegistry: async () => ({}) as never,
+		uiBridge: {
+			dispose() {},
+			getPendingFrames: () => [],
+			subscribeFrames: () => () => {},
+			handleResponse() {},
+		} as never,
 		planBridge: {
 			// The queue tests don't exercise plan mode; a minimal stub keeps the
 			// constructor + dispose paths happy without coupling these tests to

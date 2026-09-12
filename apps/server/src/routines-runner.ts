@@ -15,6 +15,7 @@ import * as path from "node:path";
 
 import type { Routine, RoutineActionKind, RoutineSpec, RoutineTrigger } from "@omp-deck/protocol";
 
+import i18n from "./i18n.ts";
 import { logger } from "./log.ts";
 import {
 	finishRun,
@@ -25,6 +26,7 @@ import {
 import { ConcurrencyController } from "./routines/concurrency.ts";
 import { runV1Pipeline } from "./routines/v1-runner.ts";
 import { finalizeRun, insertAbortedRun } from "./db/routine-step-runs.ts";
+import type { WsHub } from "./ws.ts";
 import { loadConfig } from "./config.ts";
 
 const log = logger("routines-runner");
@@ -41,6 +43,12 @@ export class RoutinesRunner {
 	private crons = new Map<string, ScheduledCron[]>();
 	private disposed = false;
 	readonly concurrency = new ConcurrencyController();
+
+	constructor(private wsHub?: WsHub) {}
+
+	setWsHub(wsHub: WsHub): void {
+		this.wsHub = wsHub;
+	}
 
 	start(): void {
 		const routines = listRoutines();
@@ -176,7 +184,7 @@ export class RoutinesRunner {
 				triggerKind: trigger,
 				triggerPayload: JSON.stringify(payload),
 				abortReason: "failure",
-				error: `spec_yaml parse failure: ${String(err)}`,
+				error: i18n.t("spec_yaml parse failure: {{detail}}", { detail: String(err) }),
 			});
 			return;
 		}
@@ -188,7 +196,7 @@ export class RoutinesRunner {
 				endedAt: new Date().toISOString(),
 				abortedAt: new Date().toISOString(),
 				abortReason: "concurrency_skipped",
-				error: "skipped: another run is in flight",
+				error: i18n.t("skipped: another run is in flight"),
 			});
 			return;
 		}
@@ -211,6 +219,7 @@ export class RoutinesRunner {
 				// so the embedded coding agent can't reach into the user's home
 				// for "context" it wasn't asked about.
 				agentSandboxRoot: path.join(path.dirname(config.dbPath), "routine-runs"),
+				wsHub: this.wsHub,
 			});
 		} catch (err) {
 			log.error(`V1 pipeline threw for ${routine.id}`, err);
@@ -248,7 +257,7 @@ async function runV0Action(
 ): Promise<{ exitCode?: number; stdoutExcerpt: string; stderrExcerpt: string; error?: string }> {
 	const cmd = buildV0Cmd(kind, body);
 	if (!cmd) {
-		return { error: `unsupported action kind: ${kind}`, stdoutExcerpt: "", stderrExcerpt: "" };
+		return { error: i18n.t("unsupported action kind: {{kind}}", { kind }), stdoutExcerpt: "", stderrExcerpt: "" };
 	}
 	const proc = Bun.spawn(cmd, {
 		cwd,

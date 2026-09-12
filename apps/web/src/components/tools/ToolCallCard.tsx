@@ -1,4 +1,5 @@
 import { useStore } from "@/lib/store";
+import { useTranslation } from "react-i18next";
 import { ChevronRight, Loader2 } from "lucide-react";
 import type { ToolCallStream } from "@/lib/types";
 import { cn, formatDurationMs, truncate } from "@/lib/utils";
@@ -32,6 +33,7 @@ const DOT_TONE = {
 } as const;
 
 export function ToolCallCard(props: ToolRendererProps) {
+	const { t } = useTranslation();
 	const { toolCallId, name, intent, stream, args } = props;
 	const open = useStore(
 		(s) => s.toolView.perCard[toolCallId] ?? !s.toolView.allCollapsed,
@@ -68,7 +70,7 @@ export function ToolCallCard(props: ToolRendererProps) {
 						<Loader2 className="h-3 w-3 animate-spin text-accent" />
 					) : (
 						<span className={isError ? "text-danger" : "text-ink-4"}>
-							{isError ? "error" : "done"}
+							{isError ? t("error") : t("done")}
 						</span>
 					)}
 					{duration !== undefined ? (

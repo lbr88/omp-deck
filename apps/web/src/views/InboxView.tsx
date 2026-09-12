@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
 	Archive,
@@ -15,6 +16,7 @@ import type { InboxItem, InboxKind } from "@omp-deck/protocol";
 
 import { Layout } from "@/components/Layout";
 import { MarkdownEdit } from "@/components/MarkdownEdit";
+import i18n from "@/i18n";
 import { inboxApi } from "@/lib/inbox-api";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -53,6 +55,7 @@ type ReaderState =
 	| { mode: "compose" };
 
 export function InboxView() {
+	const { t } = useTranslation();
 	const setInspectorOpen = useStore((s) => s.setInspectorOpen);
 	const setPendingDraft = useStore((s) => s.setPendingDraft);
 	const createSession = useStore((s) => s.createSession);
@@ -116,7 +119,7 @@ export function InboxView() {
 	}
 
 	async function removeItem(it: InboxItem): Promise<void> {
-		if (!confirm(`Delete "${it.title}"?`)) return;
+		if (!confirm(t('Delete "{{title}}"?', { title: it.title }))) return;
 		try {
 			await inboxApi.remove(it.id);
 			setItems((prev) => prev.filter((x) => x.id !== it.id));
@@ -149,19 +152,19 @@ export function InboxView() {
 		}
 		const stamp = new Date(it.createdAt).toLocaleString();
 		const draft = [
-			`Inbox · ${it.kind} · captured ${stamp}`,
+			t("Inbox · {{kind}} · captured {{stamp}}", { kind: it.kind, stamp }),
 			``,
 			`# ${it.title}`,
 			``,
-			it.body || "(no body)",
+			it.body || t("(no body)"),
 			``,
 			`---`,
-			`Help me act on this. If it's actionable, propose a concrete next step;`,
-			`if it's a decision needing input, frame the choice; if it should become a`,
-			`task, POST /api/tasks and report the new task id.`,
+			t("Help me act on this. If it's actionable, propose a concrete next step;"),
+			t("if it's a decision needing input, frame the choice; if it should become a"),
+			t("task, POST /api/tasks and report the new task id."),
 		].join("\n");
 		setPendingDraft({ text: draft });
-		navigate("/");
+		navigate("/chat");
 	}
 
 	async function promoteToTask(it: InboxItem): Promise<void> {
@@ -209,7 +212,7 @@ export function InboxView() {
 					>
 						<div className="flex h-10 shrink-0 items-center gap-2 border-b border-line bg-paper px-3">
 							<div className="meta">
-								{filter === "all" ? "All inbox" : KIND_LABEL[filter]}
+								{filter === "all" ? t("All inbox") : t(KIND_LABEL[filter])}
 							</div>
 							<div className="ml-auto font-mono text-2xs text-ink-3">
 								{items.length}
@@ -224,10 +227,10 @@ export function InboxView() {
 
 						<div className="min-h-0 flex-1 overflow-y-auto">
 							{loading ? (
-								<EmptyHint>Loading…</EmptyHint>
+								<EmptyHint>{t("Loading…")}</EmptyHint>
 							) : items.length === 0 ? (
 								<EmptyHint>
-									{filter === "all" ? "Inbox is empty." : `No ${KIND_LABEL[filter]}.`}
+									{filter === "all" ? t("Inbox is empty.") : t("No {{kind}}.", { kind: t(KIND_LABEL[filter]) })}
 								</EmptyHint>
 							) : (
 								<ul className="divide-y divide-line">
@@ -299,16 +302,17 @@ function InboxSidebar({
 	setIncludeProcessed: (v: boolean) => void;
 	onCompose: () => void;
 }) {
+	const { t } = useTranslation();
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			<div className="border-b border-line px-3 py-3">
 				<button type="button" onClick={onCompose} className="btn-primary h-8 w-full text-sm">
 					<Plus className="h-3.5 w-3.5" />
-					Capture
+					{t("Capture")}
 				</button>
 			</div>
 			<div className="border-b border-line px-3 py-3">
-				<div className="meta mb-1.5">Filter</div>
+				<div className="meta mb-1.5">{t("Filter")}</div>
 				<ul className="space-y-0.5">
 					<KindRow
 						active={filter === "all"}
@@ -334,7 +338,7 @@ function InboxSidebar({
 						checked={includeProcessed}
 						onChange={(e) => setIncludeProcessed(e.target.checked)}
 					/>
-					<span>Show processed</span>
+					<span>{t("Show processed")}</span>
 				</label>
 			</div>
 		</div>
@@ -352,6 +356,7 @@ function KindRow({
 	count: number;
 	onClick: () => void;
 }) {
+	const { t } = useTranslation();
 	return (
 		<li>
 			<button
@@ -362,7 +367,7 @@ function KindRow({
 					active ? "bg-paper-3 text-ink" : "text-ink-2 hover:bg-paper-3/60",
 				)}
 			>
-				<span>{label}</span>
+				<span>{t(label)}</span>
 				<span className="font-mono text-2xs text-ink-3">{count}</span>
 			</button>
 		</li>
@@ -380,6 +385,7 @@ function ListRow({
 	active: boolean;
 	onClick: () => void;
 }) {
+	const { t } = useTranslation();
 	return (
 		<li>
 			<button
@@ -395,7 +401,7 @@ function ListRow({
 						"mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
 						item.processedAt ? "bg-line-strong" : "bg-accent",
 					)}
-					aria-label={item.processedAt ? "processed" : "unprocessed"}
+					aria-label={item.processedAt ? t("processed") : t("unprocessed")}
 				/>
 				<div className="min-w-0 flex-1">
 					<div className="flex items-baseline gap-2">
@@ -450,6 +456,7 @@ function ReaderPane({
 	onPatch: (body: Parameters<typeof inboxApi.update>[1]) => void;
 	onClose: () => void;
 }) {
+	const { t } = useTranslation();
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			{/* Action bar — Gmail-style row with the primary action on the right. */}
@@ -467,13 +474,13 @@ function ReaderPane({
 				</select>
 				<div className="ml-auto flex shrink-0 items-center gap-1">
 					<IconAction
-						label={item.processedAt ? "Mark unprocessed" : "Mark processed"}
+						label={item.processedAt ? t("Mark unprocessed") : t("Mark processed")}
 						onClick={onProcess}
 						icon={item.processedAt ? RotateCcw : Archive}
 					/>
-					<IconAction label="Delete" onClick={onDelete} icon={Trash2} tone="danger" />
+					<IconAction label={t("Delete")} onClick={onDelete} icon={Trash2} tone="danger" />
 					<IconAction
-						label="Promote to task"
+						label={t("Promote to task")}
 						onClick={onPromote}
 						icon={ListPlus}
 						tone="accent"
@@ -482,12 +489,12 @@ function ReaderPane({
 						type="button"
 						onClick={onOpenInChat}
 						className="btn-primary h-8 shrink-0 gap-1.5 whitespace-nowrap px-2.5 text-sm"
-						title="Open this item as a new chat session"
+						title={t("Open this item as a new chat session")}
 					>
 						<MessageSquarePlus className="h-4 w-4 shrink-0" />
-						<span>Open in chat</span>
+						<span>{t("Open in chat")}</span>
 					</button>
-					<IconAction label="Close" onClick={onClose} icon={X} />
+					<IconAction label={t("Close")} onClick={onClose} icon={X} />
 				</div>
 			</div>
 
@@ -497,13 +504,13 @@ function ReaderPane({
 					value={item.title}
 					onChange={(e) => onPatch({ title: e.target.value })}
 					className="w-full bg-transparent text-xl font-semibold text-ink placeholder:text-ink-4 focus:outline-none"
-					placeholder="Untitled"
+					placeholder={t("Untitled")}
 				/>
 				<div className="mt-1 font-mono text-2xs text-ink-3">
 					{new Date(item.createdAt).toLocaleString()}
-					{item.source ? ` · source: ${item.source}` : ""}
+					{item.source ? ` · ${t("source: {{source}}", { source: item.source })}` : ""}
 					{item.processedAt
-						? ` · processed ${new Date(item.processedAt).toLocaleString()}`
+						? ` · ${t("processed {{date}}", { date: new Date(item.processedAt).toLocaleString() })}`
 						: ""}
 				</div>
 			</div>
@@ -513,7 +520,7 @@ function ReaderPane({
 				<MarkdownEdit
 					value={item.body}
 					onChange={(next) => onPatch({ body: next })}
-					placeholder="Click to add notes…"
+					placeholder={t("Click to add notes…")}
 				/>
 			</div>
 		</div>
@@ -558,6 +565,7 @@ function ComposePane({
 	onClose: () => void;
 	onCreated: (item: InboxItem) => void;
 }) {
+	const { t } = useTranslation();
 	const [title, setTitle] = useState("");
 	const [body, setBody] = useState("");
 	const [kind, setKind] = useState<InboxKind>("capture");
@@ -595,7 +603,7 @@ function ComposePane({
 				</select>
 				<div className="ml-auto flex items-center gap-1.5">
 					<button type="button" onClick={onClose} className="btn-ghost h-8 px-3 text-sm">
-						Cancel
+						{t("Cancel")}
 					</button>
 					<button
 						type="button"
@@ -604,7 +612,7 @@ function ComposePane({
 						className="btn-primary h-8 px-3 text-sm"
 					>
 						<Check className="h-4 w-4" />
-						Capture
+						{t("Capture")}
 					</button>
 				</div>
 			</div>
@@ -617,11 +625,11 @@ function ComposePane({
 					onKeyDown={(e) => {
 						if ((e.ctrlKey || e.metaKey) && e.key === "Enter") void submit();
 					}}
-					placeholder="Title — short summary of the thought"
+					placeholder={t("Title — short summary of the thought")}
 					className="w-full bg-transparent text-xl font-semibold text-ink placeholder:text-ink-4 focus:outline-none"
 				/>
 				<div className="mt-1 font-mono text-2xs text-ink-3">
-					⌘+enter to save · esc to cancel
+					{t("⌘+enter to save · esc to cancel")}
 				</div>
 			</div>
 
@@ -630,7 +638,7 @@ function ComposePane({
 					value={body}
 					onChange={setBody}
 					autoEdit
-					placeholder="Body — details, context, links… (markdown supported)"
+					placeholder={t("Body — details, context, links… (markdown supported)")}
 				/>
 			</div>
 
@@ -646,13 +654,14 @@ function ComposePane({
 // ─── Empty states ──────────────────────────────────────────────────────────
 
 function EmptyReader({ onCompose }: { onCompose: () => void }) {
+	const { t } = useTranslation();
 	return (
 		<div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
 			<InboxIcon className="h-8 w-8 text-ink-4" />
-			<div className="text-sm text-ink-3">Pick an item to read, or capture a new one.</div>
+			<div className="text-sm text-ink-3">{t("Pick an item to read, or capture a new one.")}</div>
 			<button type="button" onClick={onCompose} className="btn-primary h-8 px-3 text-sm">
 				<Plus className="h-3.5 w-3.5" />
-				Capture
+				{t("Capture")}
 			</button>
 		</div>
 	);
@@ -677,7 +686,7 @@ function formatRelative(iso: string): string {
 	const d = new Date(iso);
 	if (Number.isNaN(d.getTime())) return iso;
 	const diff = Date.now() - d.getTime();
-	if (diff < 60_000) return "just now";
+	if (diff < 60_000) return i18n.t("just now");
 	if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
 	if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
 	if (diff < 2_592_000_000) return `${Math.floor(diff / 86_400_000)}d`;

@@ -94,8 +94,7 @@ The deck filters the SDK's full registry to only commands that ship a
 text-mode handler — anything that needs a TUI selector (`/model`,
 `/agents`, `/login`, `/settings`, `/marketplace`) is hidden from the picker
 because it can't drive an interactive selector through the chat. Use the
-deck's native UI surfaces for those (model picker in the chat header,
-marketplace nav entry).
+deck's native UI surfaces for those (model picker in the chat header).
 
 The commands that **do** work:
 

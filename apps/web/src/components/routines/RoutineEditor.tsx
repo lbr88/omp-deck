@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Maximize2, Trash2, X } from "lucide-react";
 import type { Routine, RoutineActionKind, RoutineRun } from "@omp-deck/protocol";
 
 import { routinesApi } from "@/lib/routines-api";
+import { RichEditor } from "@/components/RichEditor";
 import { formatDurationMs } from "@/lib/utils";
 
 import { RoutineBuilder } from "./RoutineBuilder";
@@ -32,6 +34,7 @@ const PRESET_CRONS: ReadonlyArray<{ label: string; expr: string }> = [
 type Mode = "v0" | "v1";
 
 export function RoutineEditor({ routine, onClose, onSaved, onDeleted }: Props) {
+	const { t } = useTranslation();
 	const isNew = routine === "new";
 	const existingMode: Mode = !isNew && routine.specVersion === 1 ? "v1" : "v0";
 	// New routines start in V1 (multi-step builder) by default; users can
@@ -51,7 +54,7 @@ export function RoutineEditor({ routine, onClose, onSaved, onDeleted }: Props) {
 
 	async function remove(): Promise<void> {
 		if (isNew) return;
-		if (!confirm(`Delete routine "${routine.name}"?`)) return;
+		if (!confirm(t('Delete routine "{{name}}"?', { name: routine.name }))) return;
 		try {
 			await routinesApi.remove(routine.id);
 			onDeleted(routine.id);
@@ -63,7 +66,7 @@ export function RoutineEditor({ routine, onClose, onSaved, onDeleted }: Props) {
 	return (
 		<div className="flex h-full flex-col">
 			<div className="flex h-11 items-center gap-2 border-b border-line px-3">
-				<div className="meta">{isNew ? "New routine" : "Edit routine"}</div>
+				<div className="meta">{isNew ? t("New routine") : t("Edit routine")}</div>
 				{!isNew ? (
 					<span className="rounded bg-paper-3 px-1.5 py-0.5 font-mono text-2xs uppercase tracking-meta text-accent">
 						{routine.specVersion === 1 ? "v1 pipeline" : "v0 single-action"}
@@ -79,7 +82,7 @@ export function RoutineEditor({ routine, onClose, onSaved, onDeleted }: Props) {
 								(mode === "v1" ? "bg-ink text-paper-2" : "text-ink-3 hover:text-ink")
 							}
 						>
-							pipeline
+							{t("pipeline")}
 						</button>
 						<button
 							type="button"
@@ -89,7 +92,7 @@ export function RoutineEditor({ routine, onClose, onSaved, onDeleted }: Props) {
 								(mode === "v0" ? "bg-ink text-paper-2" : "text-ink-3 hover:text-ink")
 							}
 						>
-							single-action
+							{t("single-action")}
 						</button>
 					</div>
 				) : null}
@@ -97,7 +100,7 @@ export function RoutineEditor({ routine, onClose, onSaved, onDeleted }: Props) {
 					type="button"
 					onClick={onClose}
 					className="btn-ghost ml-auto h-7 w-7 p-0"
-					aria-label="Close"
+					aria-label={t("Close")}
 				>
 					<X className="h-4 w-4" />
 				</button>
@@ -138,6 +141,7 @@ function V0Editor({
 	onRemove: () => void;
 	onError: (msg: string) => void;
 }) {
+	const { t } = useTranslation();
 	const isNew = routine === "new";
 	const initial = isNew
 		? {
@@ -250,7 +254,7 @@ function V0Editor({
 	return (
 		<>
 			<div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 text-sm">
-				<Field label="Name">
+				<Field label={t("Name")}>
 					<input
 						value={form.name}
 						onChange={(e) => update("name", e.target.value)}
@@ -259,16 +263,16 @@ function V0Editor({
 					/>
 				</Field>
 
-				<Field label="Description">
+				<Field label={t("Description")}>
 					<input
 						value={form.description}
 						onChange={(e) => update("description", e.target.value)}
-						placeholder="optional, helps you remember why"
+						placeholder={t("optional, helps you remember why")}
 						className="field h-8 w-full px-2 text-sm"
 					/>
 				</Field>
 
-				<Field label="Cron">
+				<Field label={t("Cron")}>
 					<input
 						value={form.cron}
 						onChange={(e) => update("cron", e.target.value)}
@@ -283,7 +287,7 @@ function V0Editor({
 								onClick={() => update("cron", p.expr)}
 								className="rounded border border-line bg-paper-2 px-1.5 py-0.5 font-mono text-2xs text-ink-3 hover:bg-paper-3 hover:text-ink"
 							>
-								{p.label}
+								{t(p.label)}
 							</button>
 						))}
 					</div>
@@ -291,7 +295,10 @@ function V0Editor({
 						cronPreview.valid ? (
 							<div className="mt-2 rounded border border-success/30 bg-success/5 px-2 py-1.5">
 								<div className="meta mb-0.5 text-success">
-									Next {cronPreview.nextRuns.length} run{cronPreview.nextRuns.length === 1 ? "" : "s"}
+									{t("Next {{count}} run{{plural}}", {
+										count: cronPreview.nextRuns.length,
+										plural: cronPreview.nextRuns.length === 1 ? "" : "s",
+									})}
 								</div>
 								<ul className="space-y-0.5 font-mono text-2xs text-ink-2">
 									{cronPreview.nextRuns.map((iso) => (
@@ -301,13 +308,13 @@ function V0Editor({
 							</div>
 						) : (
 							<div className="mt-2 rounded border border-danger/40 bg-danger/5 px-2 py-1.5 font-mono text-2xs text-danger">
-								Invalid: {cronPreview.error}
+								{t("Invalid: {{error}}", { error: cronPreview.error })}
 							</div>
 						)
 					) : null}
 				</Field>
 
-				<Field label="Action">
+				<Field label={t("Action")}>
 					<div className="flex gap-1">
 						{KINDS.map((k) => (
 							<button
@@ -325,32 +332,44 @@ function V0Editor({
 							</button>
 						))}
 					</div>
-					<textarea
-						value={form.actionBody}
-						onChange={(e) => update("actionBody", e.target.value)}
-						rows={5}
-						placeholder={KINDS.find((k) => k.value === form.actionKind)?.placeholder ?? ""}
-						className="field mt-1.5 w-full resize-y px-2 py-1.5 font-mono text-xs leading-relaxed"
-					/>
+					{form.actionKind === "prompt" ? (
+						<RichEditor
+							value={form.actionBody}
+							onChange={(v) => update("actionBody", v)}
+							rows={5}
+							placeholder={KINDS.find((k) => k.value === form.actionKind)?.placeholder ?? ""}
+							disableRichText={false}
+							className="field mt-1.5 w-full resize-y px-2 py-1.5 font-mono text-xs leading-relaxed"
+						/>
+					) : (
+						<textarea
+							value={form.actionBody}
+							onChange={(e) => update("actionBody", e.target.value)}
+							rows={5}
+							placeholder={KINDS.find((k) => k.value === form.actionKind)?.placeholder ?? ""}
+							className="field mt-1.5 w-full resize-y px-2 py-1.5 font-mono text-xs leading-relaxed"
+						/>
+					)}
 					{form.actionKind === "prompt" ? (
 						ompOnPath === false ? (
 							<div className="mt-1.5 rounded border border-warn/40 bg-warn/5 px-2 py-1.5 font-mono text-2xs text-warn">
-								<code>omp</code> not on the server's PATH. This routine will fail at run time.
+								{t("{{omp}} not on the server's PATH. This routine will fail at run time.", { omp: <code>omp</code> })}
 							</div>
 						) : (
 							<p className="mt-1 font-mono text-2xs text-ink-3">
-								Runs <code>omp -p &quot;&lt;body&gt;&quot;</code> headless
-								{ompOnPath === true ? <span className="text-success"> · omp found on PATH</span> : null}.
+								{t("Runs {{cmd}} headless", { cmd: <code>omp -p &quot;&lt;body&gt;&quot;</code> })}
+								{ompOnPath === true ? <span className="text-success"> · {t("omp found on PATH")}</span> : null}
+								{t(".")}
 							</p>
 						)
 					) : null}
 				</Field>
 
-				<Field label="Working directory (optional)">
+				<Field label={t("Working directory (optional)")}>
 					<input
 						value={form.actionCwd}
 						onChange={(e) => update("actionCwd", e.target.value)}
-						placeholder="defaults to the server's cwd"
+						placeholder={t("defaults to the server's cwd")}
 						className="field h-8 w-full px-2 font-mono text-xs"
 					/>
 				</Field>
@@ -361,14 +380,14 @@ function V0Editor({
 						checked={form.enabled}
 						onChange={(e) => update("enabled", e.target.checked)}
 					/>
-					<span>Enabled</span>
+					<span>{t("Enabled")}</span>
 				</label>
 
 				{!isNew ? (
 					<section>
-						<div className="meta mb-1.5">Last runs</div>
+						<div className="meta mb-1.5">{t("Last runs")}</div>
 						{runs.length === 0 ? (
-							<div className="font-mono text-2xs text-ink-3">No runs yet.</div>
+							<div className="font-mono text-2xs text-ink-3">{t("No runs yet.")}</div>
 						) : (
 							<ul className="space-y-1">
 								{runs.map((r) => {
@@ -397,17 +416,17 @@ function V0Editor({
 												<span className="text-ink-4">{r.trigger}</span>
 												{dur !== undefined ? <span className="text-ink-4">{formatDurationMs(dur)}</span> : null}
 												{r.exitCode !== undefined ? (
-													<span className="text-ink-4">exit {r.exitCode}</span>
+													<span className="text-ink-4">{t("exit {{code}}", { code: r.exitCode })}</span>
 												) : null}
-												{!r.endedAt ? <span className="text-accent">running</span> : null}
+												{!r.endedAt ? <span className="text-accent">{t("running")}</span> : null}
 												<Link
 													to={`/routines/${(routine as Routine).id}/runs/${r.id}`}
 													onClick={(e) => e.stopPropagation()}
 													className="ml-auto flex items-center gap-1 text-ink-3 hover:text-accent"
-													title="Open run detail"
+													title={t("Open run detail")}
 												>
 													<Maximize2 className="h-3 w-3" />
-													<span className="text-2xs uppercase tracking-meta">detail</span>
+													<span className="text-2xs uppercase tracking-meta">{t("detail")}</span>
 												</Link>
 												{hasDetail ? (
 													<span className="text-ink-4">{expanded ? "▾" : "▸"}</span>
@@ -437,7 +456,7 @@ function V0Editor({
 				{!isNew ? (
 					<button type="button" onClick={onRemove} className="btn-ghost text-danger text-xs">
 						<Trash2 className="h-3.5 w-3.5" />
-						Delete
+						{t("Delete")}
 					</button>
 				) : (
 					<span />
@@ -448,9 +467,9 @@ function V0Editor({
 							type="button"
 							onClick={() => void runNow()}
 							className="btn-ghost h-7 px-2.5 text-xs"
-							title="Run now (out of schedule)"
+							title={t("Run now (out of schedule)")}
 						>
-							Run now
+							{t("Run now")}
 						</button>
 					) : null}
 					<button
@@ -459,7 +478,7 @@ function V0Editor({
 						disabled={busy || !form.name.trim() || !form.cron.trim() || !form.actionBody.trim()}
 						className="btn-primary h-7 px-2.5 text-xs"
 					>
-						{isNew ? "Create" : "Save"}
+						{isNew ? t("Create") : t("Save")}
 					</button>
 				</div>
 			</div>

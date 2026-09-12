@@ -3,6 +3,7 @@
  * Event triggers are reserved in the schema for V1.5 — not surfaced here yet.
  */
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2 } from "lucide-react";
 
 import type { RoutineTrigger } from "@omp-deck/protocol";
@@ -23,6 +24,7 @@ const PRESET_CRONS: ReadonlyArray<{ label: string; expr: string }> = [
 ];
 
 export function TriggerPicker({ triggers, onChange }: Props) {
+	const { t } = useTranslation();
 	function add(kind: "cron" | "webhook" | "manual"): void {
 		const next = triggers.slice();
 		if (kind === "cron") next.push({ cron: "0 9 * * *" });
@@ -47,7 +49,7 @@ export function TriggerPicker({ triggers, onChange }: Props) {
 		<div className="space-y-2">
 			{triggers.length === 0 ? (
 				<div className="rounded border border-warn/40 bg-warn/5 px-2 py-1.5 font-mono text-2xs text-warn">
-					This routine has no triggers. Add at least one below.
+					{t("This routine has no triggers. Add at least one below.")}
 				</div>
 			) : null}
 			{triggers.map((t, idx) => (
@@ -80,6 +82,7 @@ function TriggerCard({
 	onChange: (next: RoutineTrigger) => void;
 	onRemove: () => void;
 }) {
+	const { t } = useTranslation();
 	const kind: "cron" | "webhook" | "manual" | "event" = (() => {
 		if ("cron" in trigger) return "cron";
 		if ("webhook" in trigger) return "webhook";
@@ -105,11 +108,11 @@ function TriggerCard({
 				) : null}
 				{"manual" in trigger ? (
 					<div className="font-mono text-2xs text-ink-3">
-						Fired via the Run-now button or <code>POST /api/routines/:id/run</code>.
+						{t("Fired via the Run-now button or {{code}}.", { code: <code>POST /api/routines/:id/run</code> })}
 					</div>
 				) : null}
 				{"event" in trigger ? (
-					<div className="font-mono text-2xs text-ink-4">event triggers ship in V1.5</div>
+					<div className="font-mono text-2xs text-ink-4">{t("event triggers ship in V1.5")}</div>
 				) : null}
 			</div>
 		</div>
@@ -117,6 +120,7 @@ function TriggerCard({
 }
 
 function CronEditor({ expr, onChange }: { expr: string; onChange: (v: string) => void }) {
+	const { t } = useTranslation();
 	const [preview, setPreview] = useState<
 		| { valid: true; nextRuns: string[] }
 		| { valid: false; error: string }
@@ -152,14 +156,14 @@ function CronEditor({ expr, onChange }: { expr: string; onChange: (v: string) =>
 						onClick={() => onChange(p.expr)}
 						className="rounded border border-line bg-paper-2 px-1.5 py-0.5 font-mono text-2xs text-ink-3 hover:bg-paper-3 hover:text-ink"
 					>
-						{p.label}
+						{t(p.label)}
 					</button>
 				))}
 			</div>
 			{preview ? (
 				preview.valid ? (
 					<div className="rounded border border-success/30 bg-success/5 px-2 py-1">
-						<div className="meta mb-0.5 text-success">next {preview.nextRuns.length}</div>
+						<div className="meta mb-0.5 text-success">{t("next {{count}}", { count: preview.nextRuns.length })}</div>
 						<ul className="space-y-0.5 font-mono text-2xs text-ink-2">
 							{preview.nextRuns.slice(0, 3).map((iso) => (
 								<li key={iso}>{new Date(iso).toLocaleString()}</li>
@@ -185,12 +189,13 @@ function WebhookEditor({
 	secretEnv: string;
 	onChange: (path: string, secretEnv: string) => void;
 }) {
+	const { t } = useTranslation();
 	return (
 		<div className="space-y-1.5">
 			<Field label="path">
 				<TextInput value={path} onChange={(v) => onChange(v, secretEnv)} placeholder="/hooks/my-routine" mono />
 			</Field>
-			<Field label="secret_env (env var name holding the shared secret)">
+			<Field label={t("secret_env (env var name holding the shared secret)")}>
 				<TextInput
 					value={secretEnv}
 					onChange={(v) => onChange(path, v)}
@@ -199,8 +204,9 @@ function WebhookEditor({
 				/>
 			</Field>
 			<div className="font-mono text-2xs text-ink-3">
-				Once saved, use the "Rotate secret" button on the Settings tab to mint a server-side secret. Senders sign
-				the request body with <code>X-Routine-Signature: sha256=...</code>.
+				{t('Once saved, use the "Rotate secret" button on the Settings tab to mint a server-side secret. Senders sign the request body with {{code}}.', {
+					code: <code>X-Routine-Signature: sha256=...</code>,
+				})}
 			</div>
 		</div>
 	);

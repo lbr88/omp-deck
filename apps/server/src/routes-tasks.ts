@@ -7,18 +7,25 @@
  * back as 400/500.
  */
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { Hono } from "hono";
 import type {
 	CreateTaskRequest,
 	CreateTaskStateRequest,
 	ListTasksResponse,
 	MoveTaskRequest,
+	TaskDispatch,
+	TaskDispatchBranch,
 	UpdateTaskRequest,
 	UpdateTaskStateRequest,
 } from "@omp-deck/protocol";
 
 import { logger } from "./log.ts";
 import { broadcastBus } from "./broadcast-bus.ts";
+import type { AgentBridge } from "./bridge/types.ts";
+import { id } from "./db/index.ts";
+import i18n from "./i18n";
 import {
 	createState,
 	createTask,
@@ -33,6 +40,7 @@ import {
 	updateState,
 	updateTask,
 } from "./db/tasks.ts";
+import { createWorktree, GitError, mergeBranch, removeWorktree } from "./git-service.ts";
 
 const log = logger("routes:tasks");
 
@@ -40,7 +48,7 @@ function notifyTasksChanged(): void {
 	broadcastBus.broadcast({ type: "tasks_changed" });
 }
 
-export function buildTasksRouter(): Hono {
+export function buildTasksRouter(bridge?: AgentBridge): Hono {
 	const app = new Hono();
 
 	// ─── Tasks ─────────────────────────────────────────────────────────────
@@ -58,10 +66,10 @@ export function buildTasksRouter(): Hono {
 		try {
 			body = (await c.req.json()) as CreateTaskRequest;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		if (!body.title || typeof body.title !== "string") {
-			return c.json({ error: "title is required" }, 400);
+			return c.json({ error: i18n.t("title is required") }, 400);
 		}
 		try {
 			const task = createTask(body);
@@ -75,7 +83,7 @@ export function buildTasksRouter(): Hono {
 
 	app.get("/tasks/:id", (c) => {
 		const task = getTask(c.req.param("id"));
-		if (!task) return c.json({ error: "not found" }, 404);
+		if (!task) return c.json({ error: i18n.t("not found") }, 404);
 		return c.json(task);
 	});
 
@@ -84,11 +92,11 @@ export function buildTasksRouter(): Hono {
 		try {
 			body = (await c.req.json()) as UpdateTaskRequest;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		try {
 			const updated = updateTask(c.req.param("id"), body);
-			if (!updated) return c.json({ error: "not found" }, 404);
+			if (!updated) return c.json({ error: i18n.t("not found") }, 404);
 			notifyTasksChanged();
 			return c.json(updated);
 		} catch (err) {
@@ -103,25 +111,232 @@ export function buildTasksRouter(): Hono {
 		return c.json({ ok });
 	});
 
+	// Assign (or unassign) a task to an agent host. `agentId: null` clears.
+	app.post("/tasks/:id/assign", async (c) => {
+		let body: { agentId: string | null };
+		try {
+			body = (await c.req.json()) as { agentId: string | null };
+		} catch {
+			return c.json({ error: i18n.t("invalid json") }, 400);
+		}
+		const agentId = typeof body.agentId === "string" ? body.agentId : null;
+		try {
+			const updated = updateTask(c.req.param("id"), { assignedAgent: agentId });
+			if (!updated) return c.json({ error: i18n.t("not found") }, 404);
+			notifyTasksChanged();
+			return c.json(updated);
+		} catch (err) {
+			log.error(`assignTask failed`, err);
+			return c.json({ error: String(err) }, 400);
+		}
+	});
+
 	app.post("/tasks/:id/move", async (c) => {
 		let body: MoveTaskRequest;
 		try {
 			body = (await c.req.json()) as MoveTaskRequest;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		if (!body.stateId || typeof body.index !== "number") {
-			return c.json({ error: "stateId and numeric index required" }, 400);
+			return c.json({ error: i18n.t("stateId and numeric index required") }, 400);
 		}
 		try {
 			const moved = moveTask(c.req.param("id"), body.stateId, body.index);
-			if (!moved) return c.json({ error: "task not found" }, 404);
+			if (!moved) return c.json({ error: i18n.t("task not found") }, 404);
 			notifyTasksChanged();
 			return c.json(moved);
 		} catch (err) {
 			log.error(`moveTask failed`, err);
 			return c.json({ error: String(err) }, 400);
 		}
+	});
+
+	// ─── Dispatch ──────────────────────────────────────────────────────────
+
+	app.post("/tasks/:id/dispatch", async (c) => {
+		const taskId = c.req.param("id");
+		const task = getTask(taskId);
+		if (!task) return c.json({ error: "task not found" }, 404);
+
+		let body: { branches?: number; prompt?: string };
+		try {
+			body = (await c.req.json()) as { branches?: number; prompt?: string };
+		} catch {
+			return c.json({ error: "invalid json" }, 400);
+		}
+
+		const branchesCount = body.branches;
+		if (
+			typeof branchesCount !== "number" ||
+			!Number.isInteger(branchesCount) ||
+			branchesCount < 2 ||
+			branchesCount > 5
+		) {
+			return c.json({ error: "branches must be between 2 and 5" }, 400);
+		}
+
+		if (!task.cwd) {
+			return c.json({ error: "task has no cwd" }, 400);
+		}
+
+		if (!existsSync(task.cwd)) {
+			return c.json({ error: "task cwd does not exist" }, 400);
+		}
+
+		if (task.dispatch?.branches.some((b) => b.status === "running")) {
+			return c.json({ error: "task already has an active dispatch" }, 409);
+		}
+
+		const createdBranches: TaskDispatchBranch[] = [];
+
+		try {
+			for (let i = 0; i < branchesCount; i++) {
+				const branchId = id().toLowerCase().slice(0, 10);
+				const branchName = `dispatch/${taskId}/${branchId}`;
+				const worktreePath = join(task.cwd, ".omp-deck-worktrees", taskId, branchId);
+
+				await createWorktree(task.cwd, branchName, worktreePath);
+
+				let sessionId: string | null = null;
+				if (bridge) {
+					const session = await bridge.createSession({ cwd: worktreePath });
+					sessionId = session.sessionId;
+					if (body.prompt) {
+						const handle = bridge.getSession(sessionId);
+						if (handle) {
+							handle.prompt(body.prompt).catch((err) => {
+								log.error(`failed to send initial prompt to dispatch session ${sessionId}`, err);
+							});
+						}
+					}
+				}
+
+				createdBranches.push({
+					id: branchId,
+					worktreePath,
+					branchName,
+					sessionId,
+					status: "running",
+					createdAt: new Date().toISOString(),
+				});
+			}
+
+			const dispatch: TaskDispatch = { branches: createdBranches };
+			const dispatchJson = JSON.stringify(dispatch);
+			const updated = updateTask(taskId, { dispatchJson });
+			notifyTasksChanged();
+			return c.json(updated);
+		} catch (err) {
+			log.error(`dispatch failed for task ${taskId}`, err);
+			// Rollback any worktrees created during this attempt
+			for (const b of createdBranches) {
+				try {
+					await removeWorktree(task.cwd, b.worktreePath, { force: true });
+				} catch {
+					// best-effort cleanup
+				}
+				if (bridge && b.sessionId) {
+					try {
+						const handle = bridge.getSession(b.sessionId);
+						if (handle) {
+							await handle.abort();
+							await handle.dispose();
+						}
+					} catch {
+						// best-effort cleanup
+					}
+				}
+			}
+			return c.json({ error: err instanceof GitError ? err.stderr || err.message : String(err) }, 500);
+		}
+	});
+
+	app.post("/tasks/:id/dispatch/:branchId/merge", async (c) => {
+		const taskId = c.req.param("id");
+		const branchId = c.req.param("branchId");
+		const task = getTask(taskId);
+		if (!task) return c.json({ error: "task not found" }, 404);
+
+		if (!task.cwd || !existsSync(task.cwd)) {
+			return c.json({ error: "task cwd does not exist" }, 400);
+		}
+
+		const branches = task.dispatch?.branches ?? [];
+		const branch = branches.find((b) => b.id === branchId);
+		if (!branch) {
+			return c.json({ error: "branch not found" }, 404);
+		}
+
+		if (branch.status !== "running") {
+			return c.json({ error: "branch is not running" }, 409);
+		}
+
+		try {
+			await mergeBranch(task.cwd, branch.branchName, { noFf: true });
+		} catch (err) {
+			if (err instanceof GitError) {
+				return c.json({ error: err.stderr || err.message }, 409);
+			}
+			return c.json({ error: String(err) }, 500);
+		}
+
+		try {
+			await removeWorktree(task.cwd, branch.worktreePath, { force: true });
+		} catch (err) {
+			log.warn(`failed to remove worktree at ${branch.worktreePath} after merge`, err);
+		}
+
+		branch.status = "merged";
+		const dispatchJson = JSON.stringify({ branches });
+		const updated = updateTask(taskId, { dispatchJson });
+		notifyTasksChanged();
+		return c.json(updated);
+	});
+
+	app.post("/tasks/:id/dispatch/:branchId/discard", async (c) => {
+		const taskId = c.req.param("id");
+		const branchId = c.req.param("branchId");
+		const task = getTask(taskId);
+		if (!task) return c.json({ error: "task not found" }, 404);
+
+		if (!task.cwd || !existsSync(task.cwd)) {
+			return c.json({ error: "task cwd does not exist" }, 400);
+		}
+
+		const branches = task.dispatch?.branches ?? [];
+		const branch = branches.find((b) => b.id === branchId);
+		if (!branch) {
+			return c.json({ error: "branch not found" }, 404);
+		}
+
+		if (branch.status !== "running") {
+			return c.json({ error: "branch is not running" }, 409);
+		}
+
+		try {
+			await removeWorktree(task.cwd, branch.worktreePath, { force: true });
+		} catch (err) {
+			log.warn(`failed to remove worktree at ${branch.worktreePath} during discard`, err);
+		}
+
+		if (bridge && branch.sessionId) {
+			try {
+				const handle = bridge.getSession(branch.sessionId);
+				if (handle) {
+					await handle.abort();
+					await handle.dispose();
+				}
+			} catch (err) {
+				log.warn(`failed to dispose session ${branch.sessionId} during discard`, err);
+			}
+		}
+
+		branch.status = "discarded";
+		const dispatchJson = JSON.stringify({ branches });
+		const updated = updateTask(taskId, { dispatchJson });
+		notifyTasksChanged();
+		return c.json(updated);
 	});
 
 	// ─── States ────────────────────────────────────────────────────────────
@@ -133,9 +348,9 @@ export function buildTasksRouter(): Hono {
 		try {
 			body = (await c.req.json()) as CreateTaskStateRequest;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
-		if (!body.name) return c.json({ error: "name required" }, 400);
+		if (!body.name) return c.json({ error: i18n.t("name required") }, 400);
 		try {
 			const state = createState(body);
 			return c.json(state, 201);
@@ -150,10 +365,10 @@ export function buildTasksRouter(): Hono {
 		try {
 			body = (await c.req.json()) as { orderedIds?: unknown };
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		if (!Array.isArray(body.orderedIds) || body.orderedIds.some((x) => typeof x !== "string")) {
-			return c.json({ error: "orderedIds must be string[]" }, 400);
+			return c.json({ error: i18n.t("orderedIds must be string[]") }, 400);
 		}
 		try {
 			const states = reorderStates(body.orderedIds as string[]);
@@ -170,10 +385,10 @@ export function buildTasksRouter(): Hono {
 		try {
 			body = (await c.req.json()) as UpdateTaskStateRequest;
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		const updated = updateState(c.req.param("id"), body);
-		if (!updated) return c.json({ error: "not found" }, 404);
+		if (!updated) return c.json({ error: i18n.t("not found") }, 404);
 		return c.json(updated);
 	});
 
@@ -188,7 +403,7 @@ export function buildTasksRouter(): Hono {
 
 	app.get("/task-states/:id", (c) => {
 		const state = getState(c.req.param("id"));
-		if (!state) return c.json({ error: "not found" }, 404);
+		if (!state) return c.json({ error: i18n.t("not found") }, 404);
 		return c.json(state);
 	});
 

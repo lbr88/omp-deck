@@ -20,6 +20,8 @@
 
 import { getQuickJS, type QuickJSWASMModule } from "quickjs-emscripten";
 
+import i18n from "../i18n.ts";
+
 export interface EvaluateOptions {
 	/** Wall-clock limit in milliseconds. Capped at 1000ms; default 100ms. */
 	timeoutMs?: number;
@@ -79,7 +81,7 @@ export async function evaluate(
 		if (installResult.error) {
 			const err = vm.dump(installResult.error);
 			installResult.error.dispose();
-			throw new Error(`sandbox: failed to install context: ${describeError(err)}`);
+			throw new Error(i18n.t("sandbox: failed to install context: {{detail}}", { detail: describeError(err) }));
 		}
 		installResult.value.dispose();
 
@@ -97,7 +99,7 @@ export async function evaluate(
 			if (result.error) {
 				const err = vm.dump(result.error);
 				result.error.dispose();
-				throw new Error(`sandbox: ${describeError(err)}`);
+				throw new Error(i18n.t("sandbox: {{detail}}", { detail: describeError(err) }));
 			}
 		}
 		const value = vm.dump(result.value);

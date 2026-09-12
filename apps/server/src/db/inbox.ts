@@ -1,5 +1,6 @@
 import type { InboxItem, InboxKind } from "@omp-deck/protocol";
 
+import i18n from "../i18n.ts";
 import { getDb, id, nowIso } from "./index.ts";
 
 interface Row {
@@ -69,7 +70,7 @@ export function createInbox(input: {
 	body?: string;
 	source?: string;
 }): InboxItem {
-	if (!VALID_KINDS.has(input.kind)) throw new Error(`invalid kind: ${input.kind}`);
+	if (!VALID_KINDS.has(input.kind)) throw new Error(i18n.t("invalid kind: {{kind}}", { kind: input.kind }));
 	const itemId = `i_${id().toLowerCase().slice(0, 18)}`;
 	const now = nowIso();
 	getDb()
@@ -78,7 +79,7 @@ export function createInbox(input: {
 		)
 		.run(itemId, input.kind, input.title, input.body ?? "", input.source ?? null, now);
 	const out = getInbox(itemId);
-	if (!out) throw new Error("createInbox failed");
+	if (!out) throw new Error(i18n.t("createInbox failed"));
 	return out;
 }
 
@@ -88,7 +89,7 @@ export function updateInbox(
 ): InboxItem | undefined {
 	const existing = getInbox(itemId);
 	if (!existing) return undefined;
-	if (patch.kind && !VALID_KINDS.has(patch.kind)) throw new Error(`invalid kind: ${patch.kind}`);
+	if (patch.kind && !VALID_KINDS.has(patch.kind)) throw new Error(i18n.t("invalid kind: {{kind}}", { kind: patch.kind }));
 	const next = { ...existing, ...patch };
 	const processedAt =
 		patch.processed === true

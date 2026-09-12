@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import * as os from "node:os";
+import * as fs from "node:fs";
 import * as path from "node:path";
 import type {
 	EnvEntry,
@@ -14,6 +15,7 @@ import type {
 import type { Config } from "./config.ts";
 import { parseAutoStart, parseInt10, splitList } from "./config.ts";
 import { ENV_SCHEMA, ENV_SCHEMA_BY_KEY, type EnvSchemaEntry, validateEnvValue } from "./env-schema.ts";
+import i18n from "./i18n";
 import {
 	MANAGED_ENV_KEYS_LOADED,
 	appendEnvAudit,
@@ -25,6 +27,8 @@ import {
 } from "./env-store.ts";
 import { setLogLevel } from "./log.ts";
 import type { AgentBridge } from "./bridge/types.ts";
+import { guardWorkspacePath } from "./path-guard.ts";
+import { isAdminPrincipal } from "./auth/guard.ts";
 
 export function buildSettingsRouter(
 	bridge: AgentBridge,
@@ -36,11 +40,11 @@ export function buildSettingsRouter(
 	app.get("/settings/env", (c) => c.json(buildEnvResponse()));
 
 	app.get("/settings/env/:key", async (c) => {
-		if (c.req.query("reveal") !== "1") return c.json({ error: "reveal=1 required" }, 400);
-		if (!isLoopbackRequest(c.req.raw)) return c.json({ error: "secret reveal requires loopback" }, 403);
+		if (c.req.query("reveal") !== "1") return c.json({ error: i18n.t("reveal=1 required") }, 400);
+		if (!isLoopbackRequest(c.req.raw)) return c.json({ error: i18n.t("secret reveal requires loopback") }, 403);
 		const key = c.req.param("key");
 		const entry = ENV_SCHEMA_BY_KEY.get(key);
-		if (!entry) return c.json({ error: "unknown env key" }, 404);
+		if (!entry) return c.json({ error: i18n.t("unknown env key") }, 404);
 		const current = resolveEntry(entry);
 		await appendEnvAudit("reveal", [key]);
 		const body: RevealEnvValueResponse = {
@@ -54,19 +58,25 @@ export function buildSettingsRouter(
 	});
 
 	app.patch("/settings/env", async (c) => {
+		// SECURITY-004: env mutations can rotate provider keys, the deck API
+		// token, MCP secrets. Any authed user was previously able to clobber
+		// them. Gate behind admin principal — mirror routes-llm.ts:isAdminPrincipal.
+		const access = isAdminPrincipal(c.req.raw);
+		if (!access) return c.json({ error: "admin required" }, 403);
+
 		let body: PatchEnvSettingsRequest;
 		try {
 			body = (await c.req.json()) as PatchEnvSettingsRequest;
 		} catch {
-			return c.json({ error: "invalid json body" }, 400);
+			return c.json({ error: i18n.t("invalid json body") }, 400);
 		}
 		const updates = body.updates ?? {};
 		const clean: Record<string, string | null> = {};
 		for (const [key, value] of Object.entries(updates)) {
 			const entry = ENV_SCHEMA_BY_KEY.get(key);
-			if (!entry) return c.json({ error: `unknown env key: ${key}` }, 400);
+			if (!entry) return c.json({ error: i18n.t("unknown env key: {{key}}", { key }) }, 400);
 			if (value !== null && typeof value !== "string") {
-				return c.json({ error: `invalid env value for ${key}` }, 400);
+				return c.json({ error: i18n.t("invalid env value for {{key}}", { key }) }, 400);
 			}
 			if (value !== null) {
 				const err = validateEnvValue(entry, value);
@@ -87,9 +97,49 @@ export function buildSettingsRouter(
 	});
 
 	app.post("/server/restart", (c) => {
-		if (!isLoopbackRequest(c.req.raw)) return c.json({ error: "restart requires loopback" }, 403);
-		const resp = opts.restartServer?.() ?? { ok: false, message: "Restart is unavailable" };
+		if (!isLoopbackRequest(c.req.raw)) return c.json({ error: i18n.t("restart requires loopback") }, 403);
+		const resp = opts.restartServer?.() ?? { ok: false, message: i18n.t("Restart is unavailable") };
 		return c.json(resp);
+	});
+
+	app.post("/settings/install-focus-guard", async (c) => {
+		let body: { cwd?: string };
+		try {
+			body = (await c.req.json()) as { cwd?: string };
+		} catch {
+			return c.json({ ok: false, path: "" }, 400);
+		}
+		const cwd = body.cwd?.trim();
+		if (!cwd) {
+			return c.json({ ok: false, path: "" }, 400);
+		}
+		const guard = guardWorkspacePath(cwd, { mustExist: true });
+		if (!guard.ok) {
+			return c.json({ ok: false, path: "" }, 400);
+		}
+		try {
+			const gitDir = path.join(cwd, ".git");
+			// The hook lives inside an existing repo, not into a freshly
+			// created folder — refuse the install rather than fabricating
+			// a `.git` tree on the caller's behalf.
+			if (!fs.existsSync(gitDir)) {
+				return c.json({ ok: false, path: "" }, 400);
+			}
+			const hookDir = path.join(gitDir, "hooks");
+			fs.mkdirSync(hookDir, { recursive: true });
+			const hookPath = path.join(hookDir, "pre-commit");
+			const script = `#!/bin/sh
+# OMP Deck Focus Guard pre-commit hook
+if [ -f "$HOME/.omp/focus_active" ]; then
+  echo "[focus-guard] Focus mode active. Commit blocked."
+  exit 1
+fi
+exit 0\n`;
+			fs.writeFileSync(hookPath, script, { mode: 0o755 });
+			return c.json({ ok: true, path: hookPath });
+		} catch {
+			return c.json({ ok: false, path: "" }, 500);
+		}
 	});
 
 	return app;
@@ -117,7 +167,7 @@ function toResponseEntry(entry: EnvSchemaEntry): EnvEntry {
 		sensitive: entry.sensitive,
 		restartRequired: entry.restartRequired,
 		hotApply: entry.hotApply,
-		description: entry.description,
+		description: i18n.t(entry.description),
 		...(entry.options ? { options: entry.options } : {}),
 		...(entry.restartRequired ? { restartTarget: entry.restartTarget ?? "server" } : {}),
 	};
@@ -140,7 +190,7 @@ function resolveEntry(entry: EnvSchemaEntry): { source: EnvValueSource; value?: 
 }
 
 function maskValue(value: string, sensitive: boolean): string {
-	if (!value) return "unset";
+	if (!value) return i18n.t("unset");
 	if (!sensitive) return value;
 	const tail = value.slice(-4);
 	return tail ? `••••••••${tail}` : "••••••••";

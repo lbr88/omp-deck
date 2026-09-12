@@ -1,8 +1,8 @@
 {
 	"name": "omp-deck",
-	"version": "0.6.1",
+	"version": "0.7.0",
 	"private": false,
-	"description": "Cockpit web UI for the omp (oh-my-pi) coding agent — multi-session chat, kanban, cron routines, inbox, messaging bridges, and a marketplace browser. Designed to be served loopback-only behind a Tailscale gate or SSH tunnel.",
+	"description": "Cockpit web UI for the omp (oh-my-pi) coding agent \u2014 multi-session chat, kanban, cron routines, inbox, messaging bridges, and multi-machine remote hosts. Designed to be served loopback-only behind a Tailscale gate or SSH tunnel.",
 	"keywords": [
 		"omp",
 		"oh-my-pi",
@@ -29,6 +29,7 @@
 	"type": "module",
 	"workspaces": [
 		"apps/*",
+		"apps/gholam",
 		"apps/bridges/*",
 		"packages/*"
 	],
@@ -52,7 +53,6 @@
 		"apps/server/src",
 		"apps/server/package.json",
 		"apps/web/dist",
-		"starter-skills",
 		"starter-extensions",
 		"README.md",
 		"LICENSE",
@@ -63,9 +63,9 @@
 		"node": ">=18"
 	},
 	"dependencies": {
-		"@oh-my-pi/pi-ai": "15.1.7",
-		"@oh-my-pi/pi-coding-agent": "15.1.7",
-		"@omp-deck/protocol": "0.6.1",
+		"@oh-my-pi/pi-ai": "17.2.15",
+		"@oh-my-pi/pi-coding-agent": "17.2.15",
+		"@omp-deck/protocol": "0.7.0",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"croner": "^10.0.1",
@@ -77,6 +77,9 @@
 		"@omp-deck/protocol"
 	],
 	"devDependencies": {
+		"jsdom": "^30.0.1",
+		"jsqr": "^1.4.0",
+		"qrcode": "^1.5.4",
 		"typescript": "^5.6.3"
 	}
 }

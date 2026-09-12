@@ -8,6 +8,7 @@
 import { Hono } from "hono";
 
 import { logger } from "./log.ts";
+import i18n from "./i18n";
 import type { KbService } from "./kb-service.ts";
 
 const log = logger("routes:kb");
@@ -19,7 +20,7 @@ export function buildKbRouter(service: KbService): Hono {
 		const subpath = c.req.query("path") ?? "";
 		try {
 			const body = await service.getTree(subpath);
-			if (!body) return c.json({ error: "not found" }, 404);
+			if (!body) return c.json({ error: i18n.t("not found") }, 404);
 			return c.json(body);
 		} catch (err) {
 			log.error(`getTree failed`, err);
@@ -29,10 +30,10 @@ export function buildKbRouter(service: KbService): Hono {
 
 	app.get("/kb/file", async (c) => {
 		const subpath = c.req.query("path");
-		if (!subpath) return c.json({ error: "path required" }, 400);
+		if (!subpath) return c.json({ error: i18n.t("path required") }, 400);
 		try {
 			const body = await service.getFile(subpath);
-			if (!body) return c.json({ error: "not found" }, 404);
+			if (!body) return c.json({ error: i18n.t("not found") }, 404);
 			return c.json(body);
 		} catch (err) {
 			log.error(`getFile failed`, err);
@@ -42,15 +43,15 @@ export function buildKbRouter(service: KbService): Hono {
 
 	app.put("/kb/file", async (c) => {
 		const subpath = c.req.query("path");
-		if (!subpath) return c.json({ error: "path required" }, 400);
+		if (!subpath) return c.json({ error: i18n.t("path required") }, 400);
 		let body: { content?: unknown };
 		try {
 			body = (await c.req.json()) as { content?: unknown };
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		if (typeof body.content !== "string") {
-			return c.json({ error: "content (string) required" }, 400);
+			return c.json({ error: i18n.t("content (string) required") }, 400);
 		}
 		try {
 			const result = await service.saveFile(subpath, body.content, "update");
@@ -63,15 +64,15 @@ export function buildKbRouter(service: KbService): Hono {
 
 	app.post("/kb/file", async (c) => {
 		const subpath = c.req.query("path");
-		if (!subpath) return c.json({ error: "path required" }, 400);
+		if (!subpath) return c.json({ error: i18n.t("path required") }, 400);
 		let body: { content?: unknown };
 		try {
 			body = (await c.req.json()) as { content?: unknown };
 		} catch {
-			return c.json({ error: "invalid json" }, 400);
+			return c.json({ error: i18n.t("invalid json") }, 400);
 		}
 		if (typeof body.content !== "string") {
-			return c.json({ error: "content (string) required" }, 400);
+			return c.json({ error: i18n.t("content (string) required") }, 400);
 		}
 		try {
 			const result = await service.saveFile(subpath, body.content, "create");
@@ -94,10 +95,10 @@ export function buildKbRouter(service: KbService): Hono {
 
 	app.get("/kb/backlinks", async (c) => {
 		const subpath = c.req.query("path");
-		if (!subpath) return c.json({ error: "path required" }, 400);
+		if (!subpath) return c.json({ error: i18n.t("path required") }, 400);
 		try {
 			const body = await service.getBacklinks(subpath);
-			if (!body) return c.json({ error: "not found" }, 404);
+			if (!body) return c.json({ error: i18n.t("not found") }, 404);
 			return c.json(body);
 		} catch (err) {
 			log.error(`getBacklinks failed`, err);
@@ -124,7 +125,10 @@ export function buildKbRouter(service: KbService): Hono {
 			return c.json(body);
 		} catch (err) {
 			log.error(`getStatus failed`, err);
-			return c.json({ error: String(err) }, 500);
+		return c.json(
+			{ root: "", exists: false, fileCount: 0, error: String((err as Error).message ?? err) },
+			500,
+		);
 		}
 	});
 
@@ -150,12 +154,17 @@ function saveResultResponse(
 		case "ok":
 			return c.json(result.response);
 		case "not-found":
-			return c.json({ error: "not found" }, 404);
+			return c.json({ error: i18n.t("not found") }, 404);
 		case "conflict":
-			return c.json({ error: "already exists" }, 409);
+			return c.json({ error: i18n.t("already exists") }, 409);
 		case "invalid-path":
-			return c.json({ error: "invalid path (escapes kb root, excluded, or not .md)" }, 400);
+			return c.json({ error: i18n.t("invalid path (escapes kb root, excluded, or not .md)") }, 400);
+		case "mkdir-failed":
+			return c.json(
+				{ error: `could not create directory: ${result.message}` },
+				{ status: 500 },
+			);
 		case "invalid-frontmatter":
-			return c.json({ error: `invalid frontmatter: ${result.message}` }, 400);
+			return c.json({ error: i18n.t("invalid frontmatter: {{message}}", { message: result.message }) }, 400);
 	}
 }

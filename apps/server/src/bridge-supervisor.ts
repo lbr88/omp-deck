@@ -4,7 +4,9 @@ import type { Subprocess } from "bun";
 import type { BridgeInfo, BridgeLogLine, BridgeName, BridgeStatus } from "@omp-deck/protocol";
 
 import { logger } from "./log.ts";
+import i18n from "./i18n.ts";
 import { resolveBunExecutable } from "./runtime-bun.ts";
+import { bridgeSpawnEnv } from "./spawn-env.ts";
 
 const log = logger("bridges");
 
@@ -88,7 +90,7 @@ export class BridgeSupervisor {
 
 		const missing = this.missingEnv(t.spec);
 		if (missing.length > 0) {
-			t.lastError = `missing required env: ${missing.join(", ")}`;
+			t.lastError = i18n.t("missing required env: {{env}}", { env: missing.join(", ") });
 			throw new Error(t.lastError);
 		}
 
@@ -107,7 +109,11 @@ export class BridgeSupervisor {
 				// falls back to a PATH lookup.
 				cmd: [resolveBunExecutable(), t.spec.entry],
 				cwd: path.dirname(t.spec.entry),
-				env: { ...process.env } as Record<string, string>,
+				// SECURITY-019: bridges inherit only what they declare. The
+				// default allow-list carries the deck API token + agent dir;
+				// spec.requiredEnv adds per-bridge keys (e.g. TELEGRAM_BOT_TOKEN).
+				// Anything else — provider keys, MCP tokens — is dropped here.
+				env: bridgeSpawnEnv(t.spec.requiredEnv),
 				stdin: "ignore",
 				stdout: "pipe",
 				stderr: "pipe",
@@ -190,7 +196,7 @@ export class BridgeSupervisor {
 
 	private requireBridge(name: BridgeName): Tracked {
 		const t = this.tracked.get(name);
-		if (!t) throw new Error(`unknown bridge: ${name}`);
+		if (!t) throw new Error(i18n.t("unknown bridge: {{name}}", { name }));
 		return t;
 	}
 

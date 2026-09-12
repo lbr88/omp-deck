@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { UsageRollup } from "@/lib/types";
 import { formatCost, formatTokens } from "@/lib/utils";
 
@@ -7,9 +8,10 @@ interface Props {
 }
 
 export function CostStrip({ usage, turns }: Props) {
+	const { t } = useTranslation();
 	return (
 		<section className="border-b border-line px-4 py-4">
-			<div className="meta mb-2">Usage</div>
+			<div className="meta mb-2">{t("Usage")}</div>
 			<div className="grid grid-cols-2 gap-x-3 gap-y-1.5 font-mono text-2xs">
 				<Row k="turns" v={String(turns)} />
 				<Row k="cost" v={formatCost(usage.cost)} accent />

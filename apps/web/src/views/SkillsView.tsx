@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Loader2, Search, Sparkles } from "lucide-react";
 import type {
 	ListSkillsResponse,
@@ -7,6 +8,8 @@ import type {
 } from "@omp-deck/protocol";
 
 import { Layout } from "@/components/Layout";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { Markdown } from "@/lib/markdown";
 import { skillsApi } from "@/lib/skills-api";
 import { useStore } from "@/lib/store";
@@ -20,6 +23,7 @@ type LevelFilter = "all" | "user" | "project";
  * by default; the source filter rail surfaces all other providers.
  */
 export function SkillsView() {
+	const { t } = useTranslation();
 	const [data, setData] = useState<ListSkillsResponse | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | undefined>();
@@ -58,6 +62,9 @@ export function SkillsView() {
 		void refresh();
 	}, [skillsChangeCounter, refresh]);
 
+	const [busy, setBusy] = useState(false);
+	const [actionError, setActionError] = useState<string | undefined>();
+
 	const filtered = useMemo(() => {
 		const skills = data?.skills ?? [];
 		const q = search.trim().toLowerCase();
@@ -81,6 +88,52 @@ export function SkillsView() {
 	}, [data, search, providerFilter, levelFilter]);
 
 	const selected = filtered.find((s) => s.id === selectedId) ?? filtered[0];
+
+	const [confirmRemove, setConfirmRemove] = useState(false);
+
+	const handleEnable = useCallback(async (): Promise<void> => {
+		if (!selected || busy) return;
+		setBusy(true);
+		setActionError(undefined);
+		try {
+			await skillsApi.enable(selected.id);
+			await refresh();
+		} catch (e) {
+			setActionError(String((e as Error).message ?? e));
+		} finally {
+			setBusy(false);
+		}
+	}, [selected, busy, refresh]);
+
+	const handleDisable = useCallback(async (): Promise<void> => {
+		if (!selected || busy) return;
+		setBusy(true);
+		setActionError(undefined);
+		try {
+			await skillsApi.disable(selected.id);
+			await refresh();
+		} catch (e) {
+			setActionError(String((e as Error).message ?? e));
+		} finally {
+			setBusy(false);
+		}
+	}, [selected, busy, refresh]);
+
+	const handleRemove = useCallback(async (): Promise<void> => {
+		if (!selected || busy) return;
+		setBusy(true);
+		setActionError(undefined);
+		try {
+			await skillsApi.remove(selected.id);
+			setConfirmRemove(false);
+			await refresh();
+			setSelectedId(undefined);
+		} catch (e) {
+			setActionError(String((e as Error).message ?? e));
+		} finally {
+			setBusy(false);
+		}
+	}, [selected, busy, refresh]);
 
 	useEffect(() => {
 		if (!selected) {
@@ -111,6 +164,7 @@ export function SkillsView() {
 	}, [selected?.id, skillsChangeCounter]);
 
 	return (
+		<>
 		<Layout
 			sidebar={
 				<SkillsSidebar
@@ -125,9 +179,9 @@ export function SkillsView() {
 			main={
 				<div className="flex h-full min-h-0 flex-col">
 					<div className="flex h-10 shrink-0 items-center gap-2 border-b border-line bg-paper px-3">
-						<div className="meta">Skills</div>
+						<div className="meta">{t("Skills")}</div>
 						<div className="text-xs text-ink-3">
-							{loading ? "loading..." : `${filtered.length} / ${data?.skills.length ?? 0}`}
+							{loading ? t("loading...") : t("{{shown}} / {{total}}", { shown: filtered.length, total: data?.skills.length ?? 0 })}
 						</div>
 						<div className="flex-1" />
 						<div className="flex items-center gap-2 rounded-md border border-line bg-paper-2 px-2 py-1 text-xs">
@@ -135,7 +189,7 @@ export function SkillsView() {
 							<input
 								value={search}
 								onChange={(e) => setSearch(e.target.value)}
-								placeholder="Search name, description, triggers, tags"
+								placeholder={t("Search name, description, triggers, tags")}
 								className="w-full bg-transparent text-ink placeholder:text-ink-4 focus:outline-none sm:w-72"
 							/>
 						</div>
@@ -155,7 +209,7 @@ export function SkillsView() {
 							)}
 						>
 							{loading && !data ? (
-								<div className="px-3 py-6 text-center text-sm text-ink-3">Loading skills...</div>
+								<div className="px-3 py-6 text-center text-sm text-ink-3">{t("Loading skills...")}</div>
 							) : null}
 							{!loading && filtered.length === 0 ? (
 								<EmptyState total={data?.skills.length ?? 0} />
@@ -185,6 +239,10 @@ export function SkillsView() {
 									detail={detail}
 									loading={detailLoading}
 									error={detailError}
+						busy={busy}
+						onEnable={handleEnable}
+						onDisable={handleDisable}
+						onRemove={() => setConfirmRemove(true)}
 									onBack={() => setMobileDetailOpen(false)}
 								/>
 							)}
@@ -193,10 +251,32 @@ export function SkillsView() {
 				</div>
 			}
 		/>
+		<Modal
+			open={confirmRemove}
+			onClose={() => (busy ? undefined : setConfirmRemove(false))}
+		>
+			<div className="flex flex-col gap-4 p-2">
+				<h2 className="text-base font-medium text-ink">Remove skill?</h2>
+				<p className="text-sm text-ink-2">
+					This deletes <span className="font-mono">{selected?.name}</span> and its directory. The change is
+					not reversible — re-installing will pull a fresh copy from the original source.
+				</p>
+				<div className="flex justify-end gap-2">
+					<Button variant="ghost" onClick={() => setConfirmRemove(false)} disabled={busy}>
+						Cancel
+					</Button>
+					<Button variant="danger" onClick={() => void handleRemove()} disabled={busy}>
+						{busy ? "Removing…" : "Remove"}
+					</Button>
+				</div>
+			</div>
+		</Modal>
+		</>
 	);
 }
 
 function SkillRow({ skill, active, onClick }: { skill: SkillSummary; active: boolean; onClick: () => void }) {
+	const { t } = useTranslation();
 	return (
 		<button
 			type="button"
@@ -212,7 +292,7 @@ function SkillRow({ skill, active, onClick }: { skill: SkillSummary; active: boo
 				<span className="truncate text-sm font-medium text-ink">{skill.name}</span>
 				{!skill.enabled ? (
 					<span className="ml-auto rounded bg-paper-3 px-1.5 py-0.5 font-mono text-2xs uppercase tracking-meta text-ink-3">
-						hidden
+						{t("hidden")}
 					</span>
 				) : null}
 			</div>
@@ -249,13 +329,22 @@ function SkillDetailPane({
 	loading,
 	error,
 	onBack,
+	busy,
+	onEnable,
+	onDisable,
+	onRemove,
 }: {
 	skill: SkillSummary;
 	detail: SkillDetailResponse | null;
 	loading: boolean;
 	error: string | undefined;
 	onBack?: () => void;
+	busy: boolean;
+	onEnable: () => void;
+	onDisable: () => void;
+	onRemove: () => void;
 }) {
+	const { t } = useTranslation();
 	return (
 		<div className="flex h-full flex-col">
 			<div className="border-b border-line px-4 py-3">
@@ -264,7 +353,7 @@ function SkillDetailPane({
 						<button
 							type="button"
 							onClick={onBack}
-							aria-label="Back to skill list"
+							aria-label={t("Back to skill list")}
 							className="-ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink lg:hidden"
 						>
 							<ArrowLeft className="h-4 w-4" />
@@ -273,6 +362,37 @@ function SkillDetailPane({
 					<Sparkles className="h-4 w-4 text-accent" />
 					<h1 className="text-base font-medium text-ink">{skill.name}</h1>
 					<div className="ml-auto flex items-center gap-2">
+						{skill.provider !== "claude-plugins" ? (
+							skill.enabled ? (
+								<button
+									type="button"
+									onClick={onDisable}
+									disabled={busy}
+									className="rounded-md border border-line bg-paper-2 px-2 py-1 text-2xs text-ink-2 transition-colors hover:border-ink/30 hover:text-ink disabled:opacity-50"
+								>
+									Disable
+								</button>
+							) : (
+								<button
+									type="button"
+									onClick={onEnable}
+									disabled={busy}
+									className="rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-2xs text-accent transition-colors hover:bg-accent/15 disabled:opacity-50"
+								>
+									Enable
+								</button>
+							)
+						) : null}
+						{skill.provider !== "claude-plugins" ? (
+							<button
+								type="button"
+								onClick={onRemove}
+								disabled={busy}
+								className="rounded-md border border-danger/30 bg-danger/10 px-2 py-1 text-2xs text-danger transition-colors hover:bg-danger/15 disabled:opacity-50"
+							>
+								Remove
+							</button>
+						) : null}
 						<ProviderBadge provider={skill.provider} label={skill.providerLabel} />
 						<span className="font-mono text-2xs uppercase tracking-meta text-ink-3">
 							{skill.level}
@@ -282,12 +402,12 @@ function SkillDetailPane({
 				<div className="mt-1 font-mono text-2xs text-ink-3">
 					{skill.pluginId ? (
 						<>
-							<span className="text-ink-4">from plugin</span> {skill.pluginId}
+							<span className="text-ink-4">{t("from plugin")}</span> {skill.pluginId}
 						</>
 					) : (
 						<>
-							<span className="text-ink-4">from</span> {skill.providerLabel}
-							<span className="text-ink-4"> · dir</span> {skill.dirName}
+							<span className="text-ink-4">{t("from")}</span> {skill.providerLabel}{" "}
+							<span className="text-ink-4">{t("· dir")}</span> {skill.dirName}
 						</>
 					)}
 				</div>
@@ -310,7 +430,7 @@ function SkillDetailPane({
 
 			{loading && !detail ? (
 				<div className="flex items-center gap-2 px-4 py-3 text-sm text-ink-3">
-					<Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading SKILL.md...
+					<Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("Loading SKILL.md...")}
 				</div>
 			) : null}
 
@@ -324,9 +444,10 @@ function SkillDetailPane({
 }
 
 function TagRow({ label, values }: { label: string; values: readonly string[] }) {
+	const { t } = useTranslation();
 	return (
 		<div className="mt-2 flex flex-wrap items-center gap-1">
-			<span className="font-mono text-2xs uppercase tracking-meta text-ink-4">{label}</span>
+			<span className="font-mono text-2xs uppercase tracking-meta text-ink-4">{t(label)}</span>
 			{values.map((v) => (
 				<span
 					key={v}
@@ -340,16 +461,17 @@ function TagRow({ label, values }: { label: string; values: readonly string[] })
 }
 
 function EmptyState({ total }: { total: number }) {
+	const { t } = useTranslation();
 	return (
 		<div className="flex h-full flex-col items-center justify-center px-6 py-10 text-center">
 			<Sparkles className="h-6 w-6 text-ink-4" />
 			<div className="mt-3 text-sm text-ink-2">
-				{total === 0 ? "No skills discovered" : "No skills match the current filters"}
+				{total === 0 ? t("No skills discovered") : t("No skills match the current filters")}
 			</div>
 			<div className="mt-1 max-w-xs text-xs text-ink-3">
 				{total === 0
-					? "Drop a SKILL.md into ~/.omp/agent/skills/<name>/, or install a marketplace plugin."
-					: "Try clearing the source / level filters or the search box."}
+					? t("Drop a SKILL.md into ~/.omp/agent/skills/<name>/.")
+					: t("Try clearing the source / level filters or the search box.")}
 			</div>
 		</div>
 	);
@@ -368,6 +490,7 @@ function SkillsSidebar({
 	levelFilter: LevelFilter;
 	onLevelFilter: (l: LevelFilter) => void;
 }) {
+	const { t } = useTranslation();
 	const providers = useMemo(() => {
 		const m = new Map<string, { label: string; count: number; priority: number }>();
 		for (const s of skills) {
@@ -392,15 +515,15 @@ function SkillsSidebar({
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			<div className="border-b border-line px-3 py-2">
-				<div className="meta">Skills</div>
+				<div className="meta">{t("Skills")}</div>
 				<div className="mt-0.5 text-xs text-ink-3">
-					Every skill <span className="text-ink-2">omp</span> can reach — native, marketplace, and
-					sibling agent-tool configs. Enable/disable lives on the owning plugin or provider.
+					{t("Every skill")} <span className="text-ink-2">omp</span>{" "}
+					{t("can reach — native skills and sibling agent-tool configs. Enable/disable lives on the owning provider.")}
 				</div>
 			</div>
 
 			<div className="border-b border-line px-3 py-2">
-				<div className="font-mono text-2xs uppercase tracking-meta text-ink-4">Source</div>
+				<div className="font-mono text-2xs uppercase tracking-meta text-ink-4">{t("Source")}</div>
 				<FilterRow
 					label="all"
 					count={skills.length}
@@ -420,7 +543,7 @@ function SkillsSidebar({
 			</div>
 
 			<div className="min-h-0 px-3 py-2">
-				<div className="font-mono text-2xs uppercase tracking-meta text-ink-4">Level</div>
+				<div className="font-mono text-2xs uppercase tracking-meta text-ink-4">{t("Level")}</div>
 				<FilterRow label="all" count={levelCounts.all} active={levelFilter === "all"} onClick={() => onLevelFilter("all")} />
 				<FilterRow label="user" count={levelCounts.user} active={levelFilter === "user"} onClick={() => onLevelFilter("user")} />
 				<FilterRow label="project" count={levelCounts.project} active={levelFilter === "project"} onClick={() => onLevelFilter("project")} />
@@ -442,6 +565,7 @@ function FilterRow({
 	onClick: () => void;
 	highlight?: boolean;
 }) {
+	const { t } = useTranslation();
 	return (
 		<button
 			type="button"
@@ -455,7 +579,7 @@ function FilterRow({
 						: "text-ink-2 hover:bg-paper-3",
 			)}
 		>
-			<span className="truncate">{label}</span>
+			<span className="truncate">{t(label)}</span>
 			<span className={cn("font-mono text-2xs", active ? "text-ink-2" : "text-ink-3")}>{count}</span>
 		</button>
 	);
@@ -468,14 +592,15 @@ function SkillInspector({
 	skill: SkillSummary | undefined;
 	detail: SkillDetailResponse | null;
 }) {
+	const { t } = useTranslation();
 	if (!skill) {
-		return <div className="px-3 py-4 text-xs text-ink-3">Pick a skill to inspect.</div>;
+		return <div className="px-3 py-4 text-xs text-ink-3">{t("Pick a skill to inspect.")}</div>;
 	}
 	return (
 		<div className="flex h-full flex-col">
 			<div className="border-b border-line px-3 py-2">
-				<div className="meta">Inspector</div>
-				<div className="mt-0.5 text-xs text-ink-3">SKILL.md frontmatter + co-located files.</div>
+				<div className="meta">{t("Inspector")}</div>
+				<div className="mt-0.5 text-xs text-ink-3">{t("SKILL.md frontmatter + co-located files.")}</div>
 			</div>
 			<div className="space-y-3 overflow-y-auto px-3 py-3 text-xs">
 				<DefRow k="name" v={<span className="font-mono">{skill.name}</span>} />
@@ -489,7 +614,7 @@ function SkillInspector({
 					k="enabled"
 					v={
 						<span className={cn("font-mono", skill.enabled ? "text-success" : "text-ink-3")}>
-							{skill.enabled ? "yes" : "hidden (frontmatter)"}
+							{skill.enabled ? t("yes") : t("hidden (frontmatter)")}
 						</span>
 					}
 				/>
@@ -501,10 +626,10 @@ function SkillInspector({
 				{detail && detail.files.length > 0 ? (
 					<div>
 						<div className="font-mono text-2xs uppercase tracking-meta text-ink-4">
-							Bundled files ({detail.files.filter((f) => f.kind === "file").length})
+							{t("Bundled files ({{count}})", { count: detail.files.filter((f) => f.kind === "file").length })}
 						</div>
 						<div className="mt-1 text-2xs text-ink-4">
-							Reachable on demand — not auto-injected into the agent's context.
+							{t("Reachable on demand — not auto-injected into the agent's context.")}
 						</div>
 						<ul className="mt-2 space-y-0.5 font-mono text-2xs">
 							{detail.files.map((f) => (

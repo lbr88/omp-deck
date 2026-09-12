@@ -1,10 +1,8 @@
 # Skills
 
-The `/skills` view is the cockpit's read-only inventory of every skill `omp`
-discovers — across its native location, the marketplace plugins it has
-installed, and every sibling agent-tool config dir it shares with Claude Code,
-Codex, OpenCode, and so on. It complements `/marketplace`, which answers "what
-can I install?"
+The `/skills` view is the cockpit's inventory of every skill `omp`
+discovers — native skills under `~/.omp/agent/skills/` plus sibling
+agent-tool config dirs (Claude Code, Codex, OpenCode, and so on).
 
 ## How omp loads skills
 
@@ -98,22 +96,13 @@ doesn't satisfy:
   Claude Code's Task tool and a registered subagent of that name.
 - Hooks API specifics that differ from omp's hook surface.
 
-omp's marketplace can install Claude-plugin-format skills mechanically, and
-their SKILL.md bodies inject into the prompt fine. But anything inside that
-SKILL.md telling the agent to invoke a Claude-Code-specific dependency will
-fail at runtime if you don't also have Claude Code installed and
-authenticated.
-
-The general rule: **marketplace skills are not guaranteed to work in omp.**
-If you want a skill that's portable to omp, author against the `native`
-location (`~/.omp/agent/skills/`) or fork an upstream one into native first.
-Phase 2 of the Skills Cockpit will add a portability probe + row badge that
-flags risky installs at a glance.
+If a skill body assumes Claude Code-specific tools, it will fail at runtime
+unless that tool is also installed. Author portable skills against the
+`native` location (`~/.omp/agent/skills/`).
 
 ## Lifecycle
 
-- **Install / uninstall** for marketplace plugins lives on the
-  [Marketplace](./marketplaces.md) view; the Skills view is read-only.
+- **Install** a native skill by dropping `SKILL.md` under `~/.omp/agent/skills/<name>/` (or POST `/api/skills/install`).
 - **Enable / disable** is **plugin-level** (or `frontmatter.hide: true` for
   individual skills under any provider). The Skills view shows the
   inherited state and the hidden flag, but doesn't expose a finer toggle —

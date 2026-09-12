@@ -16,6 +16,7 @@
  * wizard manually from Settings doesn't pester.
  */
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { BookOpen, CheckCircle2, ChevronRight, ExternalLink, KeyRound, Loader2, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -40,6 +41,7 @@ const STEP_ORDER: ReadonlyArray<{ key: StepKey; title: string }> = [
 ];
 
 export function OnboardingView() {
+	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const [state, setState] = useState<OnboardingState | null>(null);
 	const [step, setStep] = useState<StepKey>("welcome");
@@ -68,7 +70,11 @@ export function OnboardingView() {
 			if (skipped) {
 				localStorage.setItem("omp-deck:onboarding-skip-toast-pending", "1");
 			}
-			navigate("/");
+			// Overview is now `/`; chat moved to `/chat`. Onboarding
+			// used to land users on `/`, which used to be Chat —
+			// preserve that intent by sending them straight into Chat
+			// so the toast hint can surface there.
+			navigate("/chat");
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
 		}
@@ -78,7 +84,7 @@ export function OnboardingView() {
 		return (
 			<div className="flex h-screen items-center justify-center bg-paper">
 				<div className="max-w-md rounded border border-danger/40 bg-danger/5 p-4 text-sm text-danger">
-					Onboarding failed to load: {error}
+					{t("Onboarding failed to load: {{error}}", { error })}
 				</div>
 			</div>
 		);
@@ -133,7 +139,7 @@ export function OnboardingView() {
 								>
 									{i + 1}
 								</span>
-								<span className="hidden sm:inline">{s.title}</span>
+								<span className="hidden sm:inline">{t(s.title)}</span>
 							</li>
 						))}
 					</ol>
@@ -142,9 +148,9 @@ export function OnboardingView() {
 					type="button"
 					onClick={() => void finish(true)}
 					className="flex items-center gap-1 text-xs text-ink-3 hover:text-ink"
-					title="Mark onboarding done and go straight to the deck"
+					title={t("Mark onboarding done and go straight to the deck")}
 				>
-					Skip setup <X className="h-3.5 w-3.5" />
+					{t("Skip setup")} <X className="h-3.5 w-3.5" />
 				</button>
 			</header>
 
@@ -169,39 +175,38 @@ export function OnboardingView() {
 // ─── Step 1: Welcome ────────────────────────────────────────────────────────
 
 function Step1Welcome({ onNext }: { onNext: () => void }) {
+	const { t } = useTranslation();
 	return (
 		<div className="flex flex-col gap-5">
 			<div>
-				<h1 className="text-2xl font-semibold text-ink">Welcome to omp·deck</h1>
+				<h1 className="text-2xl font-semibold text-ink">{t("Welcome to omp·deck")}</h1>
 				<p className="mt-2 text-sm text-ink-2">
-					A local cockpit for your AI coding agent — multi-session chat, kanban,
-					routines, knowledge base, all loopback-only on this machine.
+					{t("A local cockpit for your AI coding agent — multi-session chat, kanban, routines, knowledge base, all loopback-only on this machine.")}
 				</p>
 			</div>
 			<div className="rounded border border-line bg-paper-2 p-4 text-sm text-ink-2">
-				<p>The next few steps will:</p>
+				<p>{t("The next few steps will:")}</p>
 				<ul className="mt-2 space-y-1.5 text-xs text-ink-3">
 					<li className="flex items-start gap-2">
 						<BookOpen className="mt-px h-3.5 w-3.5 shrink-0 text-ink-3" />
-						<span>Scaffold a knowledge base the agent can read from</span>
+						<span>{t("Scaffold a knowledge base the agent can read from")}</span>
 					</li>
 					<li className="flex items-start gap-2">
 						<KeyRound className="mt-px h-3.5 w-3.5 shrink-0 text-ink-3" />
-						<span>Connect a model provider so chat actually works</span>
+						<span>{t("Connect a model provider so chat actually works")}</span>
 					</li>
 					<li className="flex items-start gap-2">
 						<Sparkles className="mt-px h-3.5 w-3.5 shrink-0 text-ink-3" />
-						<span>Optionally enable an auto-greeting on every new session</span>
+						<span>{t("Optionally enable an auto-greeting on every new session")}</span>
 					</li>
 				</ul>
 				<p className="mt-3 text-2xs text-ink-3">
-					Each step is skippable — you can re-run this wizard any time from
-					Settings → Onboarding.
+					{t("Each step is skippable — you can re-run this wizard any time from Settings → Onboarding.")}
 				</p>
 			</div>
 			<div className="flex justify-end">
 				<Button onClick={onNext}>
-					Get started <ChevronRight className="ml-1 h-4 w-4" />
+					{t("Get started")} <ChevronRight className="ml-1 h-4 w-4" />
 				</Button>
 			</div>
 		</div>
@@ -219,6 +224,7 @@ function Step2Kb({
 	onRefresh: () => Promise<void>;
 	onNext: () => void;
 }) {
+	const { t } = useTranslation();
 	const [busy, setBusy] = useState(false);
 	const [seeded, setSeeded] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -256,16 +262,16 @@ function Step2Kb({
 	return (
 		<div className="flex flex-col gap-5">
 			<div>
-				<h1 className="text-xl font-semibold text-ink">Knowledge base</h1>
+				<h1 className="text-xl font-semibold text-ink">{t("Knowledge base")}</h1>
 				<p className="mt-2 text-sm text-ink-2">
-					omp·deck's <code className="font-mono">/kb</code> view is a
-					plaintext-portable wiki the agent reads and writes. Set one up now and
-					the agent has somewhere to put long-term memory.
+					{t("omp·deck's")}{" "}
+					<code className="font-mono">/kb</code>{" "}
+					{t("view is a plaintext-portable wiki the agent reads and writes. Set one up now and the agent has somewhere to put long-term memory.")}
 				</p>
 			</div>
 
 			<div className="rounded border border-line bg-paper-2 p-4">
-				<div className="meta mb-1.5 text-ink-3">Location</div>
+				<div className="meta mb-1.5 text-ink-3">{t("Location")}</div>
 				{editing ? (
 					<input
 						type="text"
@@ -284,17 +290,17 @@ function Step2Kb({
 							onClick={() => setEditing(true)}
 							className="shrink-0 text-2xs text-ink-3 hover:text-ink"
 						>
-							Change…
+							{t("Change…")}
 						</button>
 					</div>
 				)}
 				<div className="mt-2 text-2xs text-ink-3">
 					{alreadyExists && !pathChanged
-						? "Already exists — scaffold will add starter files only if missing."
-						: "Will be created with a README and system/ stubs the agent reads at session start."}
+						? t("Already exists — scaffold will add starter files only if missing.")
+						: t("Will be created with a README and system/ stubs the agent reads at session start.")}
 					{pathChanged ? (
 						<span className="ml-1 text-warn">
-							Path differs from server's resolved root; takes full effect after deck restart.
+							{t("Path differs from server's resolved root; takes full effect after deck restart.")}
 						</span>
 					) : null}
 				</div>
@@ -312,21 +318,21 @@ function Step2Kb({
 					onClick={onNext}
 					className="text-xs text-ink-3 hover:text-ink"
 				>
-					Skip this step
+					{t("Skip this step")}
 				</button>
 				<div className="flex items-center gap-2">
 					{seeded || alreadyExists ? (
 						<span className="flex items-center gap-1 text-xs text-success">
-							<CheckCircle2 className="h-4 w-4" /> Ready
+							<CheckCircle2 className="h-4 w-4" /> {t("Ready")}
 						</span>
 					) : null}
 					{seeded || alreadyExists ? (
 						<Button onClick={onNext}>
-							Continue <ChevronRight className="ml-1 h-4 w-4" />
+							{t("Continue")} <ChevronRight className="ml-1 h-4 w-4" />
 						</Button>
 					) : (
 						<Button onClick={() => void scaffold()} disabled={busy}>
-							{busy ? "Scaffolding…" : "Create knowledge base"}
+							{busy ? t("Scaffolding…") : t("Create knowledge base")}
 						</Button>
 					)}
 				</div>
@@ -346,6 +352,7 @@ function Step3Provider({
 	onRefresh: () => Promise<void>;
 	onNext: () => void;
 }) {
+	const { t } = useTranslation();
 	const [activeOAuth, setActiveOAuth] = useState<{ id: string; name: string } | null>(null);
 	const [apiKeyValue, setApiKeyValue] = useState("");
 	const [savingKey, setSavingKey] = useState(false);
@@ -375,23 +382,21 @@ function Step3Provider({
 		<>
 			<div className="flex flex-col gap-5">
 				<div>
-					<h1 className="text-xl font-semibold text-ink">Connect a provider</h1>
+					<h1 className="text-xl font-semibold text-ink">{t("Connect a provider")}</h1>
 					<p className="mt-2 text-sm text-ink-2">
-						Pick how the agent talks to a model. Subscriptions you already pay
-						for (Claude Pro/Max, ChatGPT Plus/Pro) are the easiest — no API key
-						to manage. OpenRouter is a pay-as-you-go alternative.
+						{t("Pick how the agent talks to a model. Subscriptions you already pay for (Claude Pro/Max, ChatGPT Plus/Pro) are the easiest — no API key to manage. OpenRouter is a pay-as-you-go alternative.")}
 					</p>
 				</div>
 
 				<ProviderTile
 					name="Claude Pro / Max"
-					subtitle="OAuth subscription via claude.ai"
+					subtitle={t("OAuth subscription via claude.ai")}
 					connected={hasProvider("anthropic")}
 					onConnect={() => setActiveOAuth({ id: "anthropic", name: "Claude Pro/Max" })}
 				/>
 				<ProviderTile
 					name="ChatGPT Plus / Pro"
-					subtitle="OAuth subscription via chatgpt.com"
+					subtitle={t("OAuth subscription via chatgpt.com")}
 					connected={hasProvider("openai-codex")}
 					onConnect={() => setActiveOAuth({ id: "openai-codex", name: "ChatGPT Plus/Pro" })}
 				/>
@@ -401,12 +406,12 @@ function Step3Provider({
 						<div>
 							<div className="text-sm font-medium text-ink">OpenRouter</div>
 							<div className="mt-0.5 text-xs text-ink-3">
-								Pay-as-you-go API key. Single account, hundreds of models.
+								{t("Pay-as-you-go API key. Single account, hundreds of models.")}
 							</div>
 						</div>
 						{hasProvider("openrouter") ? (
 							<span className="flex items-center gap-1 text-xs text-success">
-								<CheckCircle2 className="h-4 w-4" /> Connected
+								<CheckCircle2 className="h-4 w-4" /> {t("Connected")}
 							</span>
 						) : null}
 					</div>
@@ -420,7 +425,7 @@ function Step3Provider({
 							autoComplete="off"
 						/>
 						<Button onClick={() => void saveOpenRouterKey()} disabled={savingKey || !apiKeyValue.trim()}>
-							{savingKey ? "Saving…" : "Save key"}
+							{savingKey ? t("Saving…") : t("Save key")}
 						</Button>
 					</div>
 					<a
@@ -429,13 +434,14 @@ function Step3Provider({
 						rel="noreferrer"
 						className="mt-2 flex items-center gap-1 text-2xs text-ink-3 hover:text-ink"
 					>
-						Get a key <ExternalLink className="h-3 w-3" />
+						{t("Get a key")} <ExternalLink className="h-3 w-3" />
 					</a>
 				</div>
 
 				<p className="text-2xs text-ink-3">
-					For other providers (OpenAI direct, Anthropic API, Google, Groq, xAI,
-					etc.), see <a href="/settings" className="underline">Settings → Providers</a> after onboarding.
+					{t("For other providers (OpenAI direct, Anthropic API, Google, Groq, xAI, etc.), see")}{" "}
+					<a href="/settings" className="underline">{t("Settings → Providers")}</a>{" "}
+					{t("after onboarding.")}
 				</p>
 
 				{error ? (
@@ -448,12 +454,12 @@ function Step3Provider({
 					<button
 						type="button"
 						onClick={onNext}
-						className="text-xs text-ink-3 hover:text-ink"
-					>
-						Skip — I'll connect later
-					</button>
+					className="text-xs text-ink-3 hover:text-ink"
+				>
+					{t("Skip — I'll connect later")}
+				</button>
 					<Button onClick={onNext} disabled={!hasAnyProvider}>
-						Continue <ChevronRight className="ml-1 h-4 w-4" />
+						{t("Continue")} <ChevronRight className="ml-1 h-4 w-4" />
 					</Button>
 				</div>
 			</div>
@@ -483,6 +489,7 @@ function ProviderTile({
 	connected: boolean;
 	onConnect: () => void;
 }) {
+	const { t } = useTranslation();
 	return (
 		<div className="flex items-center justify-between rounded border border-line bg-paper-2 p-4">
 			<div>
@@ -491,11 +498,11 @@ function ProviderTile({
 			</div>
 			{connected ? (
 				<span className="flex items-center gap-1 text-xs text-success">
-					<CheckCircle2 className="h-4 w-4" /> Connected
+					<CheckCircle2 className="h-4 w-4" /> {t("Connected")}
 				</span>
 			) : (
 				<Button variant="ghost" onClick={onConnect}>
-					Sign in
+					{t("Sign in")}
 				</Button>
 			)}
 		</div>
@@ -513,6 +520,7 @@ function Step4AutoStart({
 	onRefresh: () => Promise<void>;
 	onNext: () => void;
 }) {
+	const { t } = useTranslation();
 	const [busy, setBusy] = useState(false);
 	const [enabled, setEnabled] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -547,17 +555,15 @@ function Step4AutoStart({
 	return (
 		<div className="flex flex-col gap-5">
 			<div>
-				<h1 className="text-xl font-semibold text-ink">Session greeting</h1>
+				<h1 className="text-xl font-semibold text-ink">{t("Session greeting")}</h1>
 				<p className="mt-2 text-sm text-ink-2">
-					When you start a new chat, the agent can automatically read your
-					knowledge base, query the local API for open tasks / inbox / routines,
-					and summarize where you are. Fires once per session.
+					{t("When you start a new chat, the agent can automatically read your knowledge base, query the local API for open tasks / inbox / routines, and summarize where you are. Fires once per session.")}
 				</p>
 			</div>
 
 			<details className="rounded border border-line bg-paper-2 p-4">
 				<summary className="cursor-pointer text-xs text-ink-2">
-					Preview what the agent will do on each new session
+					{t("Preview what the agent will do on each new session")}
 				</summary>
 				<pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded bg-paper p-2 font-mono text-2xs text-ink-2">
 					{DEFAULT_START_BODY}
@@ -576,21 +582,21 @@ function Step4AutoStart({
 					onClick={onNext}
 					className="text-xs text-ink-3 hover:text-ink"
 				>
-					Skip — empty composer is fine
+					{t("Skip — empty composer is fine")}
 				</button>
 				<div className="flex items-center gap-2">
 					{enabled || alreadyExists ? (
 						<span className="flex items-center gap-1 text-xs text-success">
-							<CheckCircle2 className="h-4 w-4" /> Enabled
+							<CheckCircle2 className="h-4 w-4" /> {t("Enabled")}
 						</span>
 					) : null}
 					{enabled || alreadyExists ? (
 						<Button onClick={onNext}>
-							Continue <ChevronRight className="ml-1 h-4 w-4" />
+							{t("Continue")} <ChevronRight className="ml-1 h-4 w-4" />
 						</Button>
 					) : (
 						<Button onClick={() => void enable()} disabled={busy}>
-							{busy ? "Enabling…" : "Enable auto-greeting"}
+							{busy ? t("Enabling…") : t("Enable auto-greeting")}
 						</Button>
 					)}
 				</div>
@@ -602,6 +608,7 @@ function Step4AutoStart({
 // ─── Step 5: Done ───────────────────────────────────────────────────────────
 
 function Step5Done({ onFinish }: { onFinish: () => void }) {
+	const { t } = useTranslation();
 	const createSession = useStore((s) => s.createSession);
 	const defaultCwd = useStore((s) => s.defaultCwd);
 
@@ -622,27 +629,26 @@ function Step5Done({ onFinish }: { onFinish: () => void }) {
 	return (
 		<div className="flex flex-col gap-5">
 			<div>
-				<h1 className="text-xl font-semibold text-ink">You're set up</h1>
+				<h1 className="text-xl font-semibold text-ink">{t("You're set up")}</h1>
 				<p className="mt-2 text-sm text-ink-2">
-					Your deck has a <code className="font-mono">T-1 Welcome</code> task in
-					the kanban walking through all the surfaces. Open it any time from the
-					Tasks tab.
+					{t("Your deck has a")}{" "}
+					<code className="font-mono">T-1 Welcome</code>{" "}
+					{t("task in the kanban walking through all the surfaces. Open it any time from the Tasks tab.")}
 				</p>
 			</div>
 			<div className="rounded border border-line bg-paper-2 p-4 text-xs text-ink-3">
-				<p>What's next:</p>
+				<p>{t("What's next:")}</p>
 				<ul className="mt-2 list-disc space-y-1 pl-4">
-					<li>Send a prompt in chat to test your provider connection.</li>
-					<li>Tab to <strong>Tasks</strong> and read <strong>T-1</strong> for a deeper tour.</li>
+					<li>{t("Send a prompt in chat to test your provider connection.")}</li>
 					<li>
-						Visit <a href="/marketplace" className="underline">Marketplace</a>{" "}
-						to install plugins / skills (recommended: claude-plugins-official).
+						{t("Tab to")} <strong>{t("Tasks")}</strong> {t("and read")} <strong>T-1</strong>{" "}
+						{t("for a deeper tour.")}
 					</li>
 				</ul>
 			</div>
 			<div className="flex justify-end">
 				<Button onClick={openChat}>
-					Open chat <ChevronRight className="ml-1 h-4 w-4" />
+					{t("Open chat")} <ChevronRight className="ml-1 h-4 w-4" />
 				</Button>
 			</div>
 		</div>

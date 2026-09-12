@@ -29,14 +29,14 @@ parity on. Updated alongside SDK upgrades.
 | `@filepath` mention autocomplete | ✓ | Fuzzy match against the active workspace; respects gitignore. |
 | Copy buttons on code blocks | ✓ | Every `<pre>` gets a hover-revealed Copy button. |
 | Model picker | ✓ | Chat-header modal with available/all toggle, provider grouping, active marker. |
-| Marketplace browser | ✓ | Three-panel view over the SDK's `MarketplaceManager`. Suggested seed: `anthropics/claude-plugins-official`. |
+| Marketplace browser | — | Shop UI stripped from this fork. Skills still enumerate marketplace-installed plugins the SDK already has on disk. |
 | Themes | ✓ | Paper / Slate / Horizon with system-preference following and FOUC-free pre-paint. |
 | Permission prompts (`ask` tool) | ✓ | Bridged via the `ext_ui_dialog_*` WS frames; agent calls `ctx.ui.select/editor/confirm/input` and the web client renders the matching modal. Replayed to late subscribers so a page reload doesn't strand the user with an invisible blocking modal. |
 | Plan mode | ✓ | Shift+Tab in composer (or `/plan [on\|off]`) toggles plan mode. Agent gets the SDK's plan-mode system prompt + the `resolve` tool. `PlanApproval` inline card surfaces in the chat on `resolve apply`; Reject / Approve / Edit-and-approve. Status pills in composer border, header, and sidebar. |
 | Queued-prompt edit / cancel | ✓ | Hover a queued bubble to reveal Pencil/X. Edit opens an inline textarea (Enter saves, Esc discards, empty saves = cancel). Bridge rebuilds the SDK queue preserving order + ids. |
 | Model fallback chain editing | — | Future. The SDK handles it; the deck just shows the active primary. |
 | Skill management UI | — | Read-only `/skills` view shipped (provider grouping + frontmatter inspector). Author-from-deck flow still backlog. |
-| `/marketplace` slash command | — | TUI-only in the SDK; deck filters it out and exposes the same functionality via the Marketplace nav entry instead. |
+| `/marketplace` slash command | — | TUI-only in the SDK; deck filters it out of the picker. |
 | `/model` slash command | — | TUI-only in the SDK; deck filters it out and exposes the same functionality via the chat-header model picker. |
 | `/copy` family (clipboard) | — | TUI-only in the SDK. The deck's per-codeblock Copy buttons cover the most-common case. |
 
@@ -49,8 +49,8 @@ live `InteractiveModeContext` (editor selectors, status line, fuzzy carousel
 widgets) that doesn't translate to web UI.
 
 The deck filters its picker to the ACP-enabled set. Commands with
-TUI-equivalent web UIs (model picker, marketplace) get first-class deck
-features instead of being shoehorned through a chat-side selector. See
+TUI-equivalent web UIs (model picker) get first-class deck features
+instead of being shoehorned through a chat-side selector. See
 [docs/slash-commands.md](./slash-commands.md) for the dispatch matrix.
 
 ## What omp-deck adds on top of the TUI

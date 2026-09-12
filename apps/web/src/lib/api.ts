@@ -1,15 +1,54 @@
 import type {
+	AiMeta,
 	CreateSessionRequest,
 	CreateSessionResponse,
+	PatchSessionMetaRequest,
+	PatchSessionMetaResponse,
+	RegenerateMetaRequest,
+	RegenerateMetaResponse,
 	ListFilePathsResponse,
 	ListModelsResponse,
+	ListReposResponse,
 	ListSessionsResponse,
 	ListSlashCommandsResponse,
+	ListWorktreesResponse,
 	ListWorkspacesResponse,
 	ModelRef,
+	ListFsDialogResponse,
+	RegisterWorkspaceResponse,
+	SessionSummary,
 } from "@omp-deck/protocol";
 
 const BASE = "/api";
+
+/**
+ * Session-based auth: the deck's access token is exchanged for an HttpOnly
+ * session cookie at login and never touches JS-readable storage. All API
+ * calls + the WebSocket rely on the cookie the browser attaches
+ * automatically; a 401 flips the store's `unauthorized` flag which drives
+ * the login gate.
+ */
+
+type UnauthorizedListener = () => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+/** The store subscribes to surface the "unauthorized" connection state. */
+export function onUnauthorized(listener: UnauthorizedListener): () => void {
+	unauthorizedListeners.add(listener);
+	return () => {
+		unauthorizedListeners.delete(listener);
+	};
+}
+
+function notifyUnauthorized(): void {
+	for (const listener of unauthorizedListeners) {
+		try {
+			listener();
+		} catch (err) {
+			console.warn("unauthorized listener threw", err);
+		}
+	}
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	const res = await fetch(`${BASE}${path}`, {
@@ -19,6 +58,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 			...(init?.headers ?? {}),
 		},
 	});
+	if (res.status === 401) notifyUnauthorized();
 	if (!res.ok) {
 		let body: string;
 		try {
@@ -31,6 +71,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	return (await res.json()) as T;
 }
 
+export interface AuthStatus {
+	authenticated: boolean;
+}
+
+export const authApi = {
+	status(): Promise<AuthStatus> {
+		return request<AuthStatus>("/auth/status");
+	},
+	login(token: string, remember?: boolean): Promise<{ ok: boolean }> {
+		return request("/auth/login", {
+			method: "POST",
+			body: JSON.stringify({ token, ...(remember ? { remember: true } : {}) }),
+		});
+	},
+	logout(): Promise<{ ok: boolean }> {
+		return request("/auth/logout", { method: "POST", body: "{}" });
+	},
+};
+
 export const api = {
 	listWorkspaces(): Promise<ListWorkspacesResponse> {
 		return request<ListWorkspacesResponse>("/workspaces");
@@ -39,11 +98,24 @@ export const api = {
 		const q = cwd ? `?cwd=${encodeURIComponent(cwd)}` : "";
 		return request<ListSessionsResponse>(`/sessions${q}`);
 	},
+	listGroupedSessions(
+		groupBy: "repo" | "status" | "urgency" | "importance",
+	): Promise<{ groups: Array<{ key: string; sessions: SessionSummary[] }> }> {
+		return request(`/sessions/grouped?groupBy=${encodeURIComponent(groupBy)}`);
+	},
 	createSession(body: CreateSessionRequest): Promise<CreateSessionResponse> {
 		return request<CreateSessionResponse>("/sessions", {
 			method: "POST",
 			body: JSON.stringify(body),
 		});
+	},
+	listRepos(): Promise<ListReposResponse> {
+		return request<ListReposResponse>("/repos");
+	},
+	listWorktrees(owner: string, repo: string): Promise<ListWorktreesResponse> {
+		return request<ListWorktreesResponse>(
+			`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/worktrees`,
+		);
 	},
 	abortSession(id: string): Promise<{ ok: true }> {
 		return request(`/sessions/${encodeURIComponent(id)}/abort`, { method: "POST" });
@@ -76,6 +148,18 @@ export const api = {
 	disposeSession(id: string): Promise<{ ok: true }> {
 		return request(`/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
 	},
+	regenerateSessionMeta(id: string, opts?: RegenerateMetaRequest): Promise<RegenerateMetaResponse> {
+		return request<RegenerateMetaResponse>(`/sessions/${encodeURIComponent(id)}/regenerate-meta`, {
+			method: "POST",
+			body: JSON.stringify(opts ?? {}),
+		});
+	},
+	patchSessionMeta(id: string, patch: PatchSessionMetaRequest): Promise<PatchSessionMetaResponse> {
+		return request<PatchSessionMetaResponse>(`/sessions/${encodeURIComponent(id)}/meta`, {
+			method: "PATCH",
+			body: JSON.stringify(patch),
+		});
+	},
 	listSlashCommands(cwd?: string): Promise<ListSlashCommandsResponse> {
 		const q = cwd ? `?cwd=${encodeURIComponent(cwd)}` : "";
 		return request<ListSlashCommandsResponse>(`/slash-commands${q}`);
@@ -83,5 +167,16 @@ export const api = {
 	completeFilePath(cwd: string, q: string, limit = 20): Promise<ListFilePathsResponse> {
 		const params = new URLSearchParams({ cwd, q, limit: String(limit) });
 		return request<ListFilePathsResponse>(`/fs/complete?${params.toString()}`);
+	},
+	listFsDialog(cwd: string, q?: string, limit = 200): Promise<ListFsDialogResponse> {
+		const params = new URLSearchParams({ cwd, limit: String(limit) });
+		if (q) params.set("q", q);
+		return request<ListFsDialogResponse>(`/fs/dialog?${params.toString()}`);
+	},
+	registerWorkspace(cwd: string): Promise<RegisterWorkspaceResponse> {
+		return request<RegisterWorkspaceResponse>("/workspaces/register", {
+			method: "POST",
+			body: JSON.stringify({ cwd }),
+		});
 	},
 };

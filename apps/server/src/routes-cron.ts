@@ -10,12 +10,14 @@
 import { Hono } from "hono";
 import { Cron } from "croner";
 
+import i18n from "./i18n";
+
 export function buildUtilityRouter(): Hono {
 	const app = new Hono();
 
 	app.get("/cron/validate", (c) => {
 		const expr = c.req.query("expr")?.trim() ?? "";
-		if (!expr) return c.json({ valid: false, error: "empty expression", nextRuns: [] });
+		if (!expr) return c.json({ valid: false, error: i18n.t("empty expression"), nextRuns: [] });
 		try {
 			const cron = new Cron(expr, { paused: true });
 			const nextRuns: string[] = [];

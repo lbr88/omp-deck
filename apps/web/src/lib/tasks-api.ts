@@ -37,6 +37,12 @@ export const tasksApi = {
 			body: JSON.stringify(body),
 		});
 	},
+	assign(id: string, agentId: string | null): Promise<Task> {
+		return req<Task>(`/tasks/${encodeURIComponent(id)}/assign`, {
+			method: "POST",
+			body: JSON.stringify({ agentId }),
+		});
+	},
 	remove(id: string): Promise<{ ok: boolean }> {
 		return req(`/tasks/${encodeURIComponent(id)}`, { method: "DELETE" });
 	},
@@ -63,5 +69,23 @@ export const tasksApi = {
 			method: "POST",
 			body: JSON.stringify({ orderedIds }),
 		});
+	},
+	dispatch(id: string, body: { branches: number; prompt?: string }): Promise<Task> {
+		return req<Task>(`/tasks/${encodeURIComponent(id)}/dispatch`, {
+			method: "POST",
+			body: JSON.stringify(body),
+		});
+	},
+	mergeDispatchBranch(id: string, branchId: string): Promise<Task> {
+		return req<Task>(
+			`/tasks/${encodeURIComponent(id)}/dispatch/${encodeURIComponent(branchId)}/merge`,
+			{ method: "POST" },
+		);
+	},
+	discardDispatchBranch(id: string, branchId: string): Promise<Task> {
+		return req<Task>(
+			`/tasks/${encodeURIComponent(id)}/dispatch/${encodeURIComponent(branchId)}/discard`,
+			{ method: "POST" },
+		);
 	},
 };

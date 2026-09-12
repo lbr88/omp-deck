@@ -8,16 +8,20 @@ import {
 	type DragEvent,
 	type KeyboardEvent,
 } from "react";
+import { useTranslation } from "react-i18next";
 import type { FilePathMatch, SlashCommand } from "@omp-deck/protocol";
 
 import { api } from "@/lib/api";
 import { FilePathPicker } from "@/components/composer/FilePathPicker";
-import { SlashCommandPicker } from "@/components/composer/SlashCommandPicker";
 import { Paperclip, ArrowUp, Square, X } from "lucide-react";
-import type { ImageAttachment } from "@omp-deck/protocol";
+import type { ImageAttachment, PromptRecommendation } from "@omp-deck/protocol";
+
+import { SlashCommandPicker } from "@/components/composer/SlashCommandPicker";
+import { PromptSuggestions } from "@/components/PromptSuggestions";
 
 import { selectActiveSession, useStore } from "@/lib/store";
 import { useComposerHistory } from "@/lib/use-composer-history";
+import { useDraft, clearDraft } from "@/lib/drafts";
 import { cn } from "@/lib/utils";
 
 interface PendingImage extends ImageAttachment {
@@ -37,7 +41,13 @@ const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const slashCommandsCache = new Map<string, SlashCommand[]>();
 
 export function Composer() {
+	const { t } = useTranslation();
 	const session = useStore(selectActiveSession);
+	// The session *snapshot* only exists once the WS has delivered it. The
+	// selected id survives offline (persisted across reloads), so keying the
+	// composer off the id keeps it usable with the server down: the prompt
+	// still autosaves and the send is queued to IndexedDB for replay.
+	const activeId = useStore((s) => s.activeId);
 	const sendPrompt = useStore((s) => s.sendPrompt);
 	const abort = useStore((s) => s.abort);
 	const clearQueue = useStore((s) => s.clearQueue);
@@ -48,6 +58,15 @@ export function Composer() {
 	const queuedCount = session?.queuedPrompts.length ?? 0;
 	const [draft, setDraft] = useState("");
 	const [images, setImages] = useState<PendingImage[]>([]);
+	// Per-cwd draft key so users on different sessions don't see each other's
+	// in-progress text. The "global" key (active session id) is the natural
+	// namespace — falls back to a literal when no session is selected so the
+	// draft still survives a session-less cold reload.
+	const sessionId = session?.sessionId ?? activeId ?? "global";
+	const draftKey = `composer:${sessionId}`;
+	const imagesKey = `composer-images:${sessionId}`;
+	useDraft<string>(draftKey, draft, setDraft);
+	useDraft<PendingImage[]>(imagesKey, images, setImages);
 	const [dragOver, setDragOver] = useState(false);
 	const taRef = useRef<HTMLTextAreaElement>(null);
 	const fileRef = useRef<HTMLInputElement>(null);
@@ -120,12 +139,42 @@ export function Composer() {
 				name: "plan",
 				scope: "deck",
 				description: planModeEnabled
-					? "Exit plan mode (or Shift+Tab)"
-					: "Enter plan mode — agent reads + proposes only (or Shift+Tab)",
+					? t("Exit plan mode (or Shift+Tab)")
+					: t("Enter plan mode — agent reads + proposes only (or Shift+Tab)"),
 				argumentHint: "[on|off]",
 			},
+			{
+				name: "ultrathink",
+				scope: "deck",
+				description: "Deep-reason the prompt — fires the active session with reasoning-effort = high.",
+				argumentHint: "<prompt>",
+			},
+			{
+				name: "workflowz",
+				scope: "deck",
+				description: "Fan out a 3-way parallel workflow (primary + critique + alternate + synthesize).",
+				argumentHint: "<prompt>",
+			},
+			{
+				name: "orchestrate",
+				scope: "deck",
+				description: "Run as an orchestrator agent — plan, delegate, synthesize.",
+				argumentHint: "<prompt>",
+			},
+			{
+				name: "login",
+				scope: "deck",
+				description: "Sign in to a provider (omni / anthropic / openai / openrouter / custom).",
+				argumentHint: "<provider> <subscription-key>",
+			},
+			{
+				name: "restart",
+				scope: "deck",
+				description: "Restart the omp-deck server.",
+				argumentHint: "",
+			},
 		],
-		[planModeEnabled],
+		[planModeEnabled, t],
 	);
 
 	const allSlashCommands = useMemo(
@@ -157,7 +206,7 @@ export function Composer() {
 	}, [filteredSlash]);
 
 	const slashOpen = slashQuery !== null && filteredSlash.length > 0;
-	const disabled = !session;
+	const disabled = !session && !activeId;
 	const isBusy = session?.status === "streaming" || session?.status === "retrying";
 
 	const autoresize = useCallback((): void => {
@@ -178,6 +227,103 @@ export function Composer() {
 	const [pathSelected, setPathSelected] = useState(0);
 	const [caretPos, setCaretPos] = useState(0);
 	const lastFetchRef = useRef(0);
+
+	// ─── Prompt suggestions + {{ autocomplete ────────────────────────────────
+	//
+	// `<PromptSuggestions />` mounts when the composer is focused, the draft
+	// is empty, and 5s have passed since the last keystroke. The 5s idle
+	// timer is reset on every draft change; cleared on send/dismiss.
+	const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+	const lastEditRef = useRef(Date.now());
+	const [variableCandidates, setVariableCandidates] = useState<string[]>([]);
+	const [variableSelected, setVariableSelected] = useState(0);
+
+	useEffect(() => {
+		// Tick once per second; flip the suggestions panel on when the
+		// composer has been idle for ≥ 5s and is empty. Once the user
+		// types, lastEditRef resets and the panel hides again.
+		const t = window.setInterval(() => {
+			if (!taRef.current) return;
+			const empty = draft.trim().length === 0 && images.length === 0;
+			const idle = Date.now() - lastEditRef.current >= 5000;
+			setSuggestionsOpen(empty && idle);
+		}, 1000);
+		return () => window.clearInterval(t);
+	}, [draft, images]);
+
+	// `{{<token>` mention — same shape as the file-path picker but sourced
+	// from the cached prompt library's union of `variables[]`. The chip
+	// shows when the caret sits inside an unterminated `{{ ... `.
+	const variableRange = useMemo<{ start: number; end: number; token: string } | null>(() => {
+		const before = draft.slice(0, caretPos);
+		const m = before.match(/\{\{\s*([a-zA-Z_][\w.-]*)$/);
+		if (!m) return null;
+		const token = m[1] ?? "";
+		const start = caretPos - token.length - 2; // index of the opening `{{`
+		return { start, end: caretPos, token };
+	}, [draft, caretPos]);
+
+	const promptsLibraryLocal = useStore((s) => s.promptsLibrary);
+	const variableRangeToken = variableRange?.token;
+
+	useEffect(() => {
+		if (!variableRange) {
+			setVariableCandidates([]);
+			return;
+		}
+		const set = new Set<string>();
+		for (const p of promptsLibraryLocal) {
+			for (const v of p.variables ?? []) set.add(v);
+		}
+		const all = [...set].sort();
+		const q = variableRange.token.toLowerCase();
+		const filtered = q ? all.filter((v) => v.toLowerCase().includes(q)) : all;
+		setVariableCandidates(filtered.slice(0, 12));
+		setVariableSelected(0);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [variableRangeToken, promptsLibraryLocal]);
+
+	const pickVariable = useCallback(
+		(name: string): void => {
+			if (!variableRange) return;
+			setDraft((prev) => {
+				const before = prev.slice(0, variableRange.start);
+				const after = prev.slice(variableRange.end);
+				return `${before}{{${name}}}${after}`;
+			});
+			queueMicrotask(() => {
+				const ta = taRef.current;
+				if (!ta) return;
+				const pos = variableRange.start + name.length + 4; // `{{name}}` len
+				ta.setSelectionRange(pos, pos);
+				setCaretPos(pos);
+				ta.focus();
+				autoresize();
+			});
+		},
+		[autoresize, variableRange],
+	);
+
+	const onSuggestionPick = useCallback(
+		(rec: PromptRecommendation): void => {
+			// Insert the prompt body at the caret (overwriting any partial draft).
+			setDraft(rec.prompt.body);
+			useStore.getState().promptUsageBump(rec.prompt.id);
+			setSuggestionsOpen(false);
+			queueMicrotask(() => {
+				const ta = taRef.current;
+				if (!ta) return;
+				const end = rec.prompt.body.length;
+				ta.setSelectionRange(end, end);
+				setCaretPos(end);
+				ta.focus();
+				autoresize();
+			});
+		},
+		[autoresize],
+	);
+
+
 
 	interface MentionRange {
 		token: string;
@@ -271,6 +417,48 @@ export function Composer() {
 				if (arg === "on") setPlanMode(true);
 				else if (arg === "off") setPlanMode(false);
 				else setPlanMode(!planModeEnabled);
+				return true;
+			}
+			if (name === "ultrathink") {
+				const prompt = args.trim();
+				if (!prompt || !session) return true;
+				// v0.7+: dispatch via /api/workflows with mode=ultrathink and the active session id.
+				void fetch("/api/workflows", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ mode: "ultrathink", tasks: [{ prompt, cwd: session.cwd }] }),
+				}).catch(() => {});
+				return true;
+			}
+			if (name === "workflowz" || name === "orchestrate") {
+				const prompt = args.trim();
+				if (!prompt || !session) return true;
+				void fetch("/api/workflows", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ mode: name, tasks: [{ prompt, cwd: session.cwd }] }),
+				}).catch(() => {});
+				return true;
+			}
+			if (name === "restart") {
+				void fetch("/api/system/lifecycle", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ action: "restart" }),
+				}).catch(() => {});
+				return true;
+			}
+			if (name === "login") {
+				// /login <provider> <key> — forward to /api/auth/login.
+				const parts = args.trim().split(/\s+/);
+				const provider = parts[0];
+				const key = parts.slice(1).join(" ");
+				if (!provider || !key) return true;
+				void fetch("/api/auth/login", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ provider, subscriptionKey: key }),
+				}).catch(() => {});
 				return true;
 			}
 			return false;
@@ -410,6 +598,10 @@ export function Composer() {
 		// duplicates and ignores recall-then-send-unmodified, so we don't have
 		// to track that here.
 		if (text.length > 0) history.push(text);
+		// Clear the persisted draft on successful send so a reload doesn't
+		// resurrect sent text. Fire-and-forget — `clearDraft` swallows errors.
+		void clearDraft(draftKey);
+		void clearDraft(imagesKey);
 		setDraft("");
 		setImages([]);
 		imagesRef.current = [];
@@ -434,6 +626,30 @@ export function Composer() {
 		// slash picker does. Slash and file-path pickers are mutually exclusive
 		// (slash anchors at draft start; file-path triggers on `@` anywhere) so
 		// the if-else cascade is safe.
+		const variableOpen = variableCandidates.length > 0 && variableRange !== null;
+		if (variableOpen) {
+		if (e.key === "ArrowDown") {
+			e.preventDefault();
+			setVariableSelected((i) => Math.min(i + 1, variableCandidates.length - 1));
+			return;
+		}
+		if (e.key === "ArrowUp") {
+			e.preventDefault();
+			setVariableSelected((i) => Math.max(i - 1, 0));
+			return;
+		}
+		if (e.key === "Enter" || e.key === "Tab") {
+			e.preventDefault();
+			const choice = variableCandidates[variableSelected] ?? variableCandidates[0];
+			if (choice) pickVariable(choice);
+			return;
+		}
+		if (e.key === "Escape") {
+			e.preventDefault();
+			setVariableCandidates([]);
+			return;
+		}
+		}
 		if (pathOpen) {
 			if (e.key === "ArrowDown") {
 				e.preventDefault();
@@ -618,11 +834,24 @@ export function Composer() {
 						onPick={pickSlashCommand}
 						onSelectionChange={setSlashSelected}
 					/>
+					<VariablePicker
+					candidates={variableCandidates}
+					selectedIndex={variableSelected}
+					onPick={pickVariable}
+					onSelectionChange={setVariableSelected}
+					/>
 					<FilePathPicker
 						matches={pathMatches}
 						selectedIndex={pathSelected}
 						onPick={pickFilePath}
 						onSelectionChange={setPathSelected}
+					/>
+					<PromptSuggestions
+					cwd={sessionCwd}
+					visible={suggestionsOpen}
+					query={draft}
+					onPick={onSuggestionPick}
+					onDismiss={() => setSuggestionsOpen(false)}
 					/>
 					<input
 						ref={fileRef}
@@ -641,8 +870,8 @@ export function Composer() {
 						className="btn-ghost h-7 w-7 shrink-0 self-end p-0"
 						onClick={() => fileRef.current?.click()}
 						disabled={disabled}
-						aria-label="Attach image"
-						title="Attach image"
+						aria-label={t("Attach image")}
+						title={t("Attach image")}
 					>
 						<Paperclip className="h-4 w-4" />
 					</button>
@@ -653,18 +882,20 @@ export function Composer() {
 						rows={1}
 						placeholder={
 							disabled
-								? "Pick a session first"
+								? t("Pick a session first")
 								: planModeEnabled
-									? "Plan mode — agent reads + proposes only"
+									? t("Plan mode — agent reads + proposes only")
 									: isBusy
-										? "Streaming… enter to queue"
+										? t("Streaming… enter to queue")
 										: dragOver
-											? "Drop images here"
-											: "Message omp…"
+											? t("Drop images here")
+											: t("Message omp…")
 						}
 						onChange={(e) => {
 							setDraft(e.target.value);
-							setCaretPos(e.target.selectionStart ?? e.target.value.length);
+							setCaretPos(e.currentTarget.selectionStart ?? e.currentTarget.value.length);
+							lastEditRef.current = Date.now();
+							setSuggestionsOpen(false);
 							autoresize();
 						}}
 						onSelect={(e) => {
@@ -683,11 +914,11 @@ export function Composer() {
 							type="button"
 							className="btn-danger h-7 gap-1 self-end px-2 text-xs"
 							onClick={() => abort()}
-							aria-label="Stop streaming (Ctrl+.)"
-							title="Stop streaming (Ctrl+.)"
+							aria-label={t("Stop streaming (Ctrl+.)")}
+							title={t("Stop streaming (Ctrl+.)")}
 						>
 							<Square className="h-3 w-3" fill="currentColor" />
-							<span className="font-mono uppercase tracking-meta text-2xs">stop</span>
+							<span className="font-mono uppercase tracking-meta text-2xs">{t("stop")}</span>
 						</button>
 					) : (
 						<button
@@ -695,8 +926,8 @@ export function Composer() {
 							className="btn-primary h-7 w-7 p-0 self-end disabled:bg-line-strong"
 							onClick={send}
 							disabled={disabled || (draft.trim().length === 0 && images.length === 0)}
-							aria-label="Send"
-							title="Send"
+							aria-label={t("Send")}
+							title={t("Send")}
 						>
 							<ArrowUp className="h-3.5 w-3.5" />
 						</button>
@@ -709,16 +940,18 @@ export function Composer() {
 							type="button"
 							onClick={() => clearQueue()}
 							className="rounded border border-line bg-paper px-1.5 py-0.5 uppercase tracking-meta text-ink-2 hover:text-danger hover:border-danger/40"
-							title="Drop every queued prompt for this session"
+							title={t("Drop every queued prompt for this session")}
 						>
-							{queuedCount} queued · cancel
+							{t("{{count}} queued · cancel", { count: queuedCount })}
 						</button>
 					) : null}
 					<span>
-						{images.length > 0
-							? `${images.length} image${images.length === 1 ? "" : "s"} · `
-							: ""}
-						enter send · shift+enter newline · paste/drop image
+						{images.length === 1
+							? t("1 image · ")
+							: images.length > 1
+								? t("{{count}} images · ", { count: images.length })
+								: ""}
+						{t("enter send · shift+enter newline · paste/drop image")}
 					</span>
 				</div>
 			</div>
@@ -737,11 +970,12 @@ function ImageThumb({
 	bytes: number;
 	onRemove: () => void;
 }) {
+	const { t } = useTranslation();
 	return (
 		<div className="group relative">
 			<img
 				src={preview}
-				alt={`pasted ${index}`}
+				alt={t("pasted {{n}}", { n: index })}
 				className="h-14 w-14 rounded border border-line object-cover bg-paper-3"
 			/>
 			<div className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-b bg-ink/75 px-1 py-0.5 text-center font-mono text-2xs text-paper-2">
@@ -751,7 +985,7 @@ function ImageThumb({
 				type="button"
 				onClick={onRemove}
 				className="absolute -right-1.5 -top-1.5 rounded-full bg-ink p-0.5 text-paper opacity-0 transition-opacity hover:bg-danger group-hover:opacity-100"
-				aria-label="Remove image"
+				aria-label={t("Remove image")}
 			>
 				<X className="h-3 w-3" />
 			</button>
@@ -782,4 +1016,71 @@ function formatKb(bytes: number): string {
 	if (bytes < 1024) return `${bytes}B`;
 	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}K`;
 	return `${(bytes / (1024 * 1024)).toFixed(1)}M`;
+}
+
+/**
+ * `{{variable` autocomplete picker. Mirrors the file-path picker's
+ * controlled-from-outside contract so the composer's `handleKey` keeps the
+ * single source of keyboard truth. Renders nothing when there are no
+ * candidates so the composer can mount it unconditionally.
+ */
+function VariablePicker({
+	candidates,
+	selectedIndex,
+	onPick,
+	onSelectionChange,
+}: {
+	candidates: string[];
+	selectedIndex: number;
+	onPick: (name: string) => void;
+	onSelectionChange: (i: number) => void;
+}) {
+	const listRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const el = listRef.current?.children[selectedIndex] as HTMLElement | undefined;
+		el?.scrollIntoView({ block: "nearest" });
+	}, [selectedIndex]);
+
+	if (candidates.length === 0) return null;
+
+	return (
+		<div
+			role="listbox"
+			aria-label="Variables"
+			className={cn(
+				"absolute bottom-full left-0 right-0 mb-1 max-h-[200px] overflow-y-auto",
+				"rounded-md border border-line bg-paper-2 shadow-[0_8px_24px_-8px_rgba(26,24,20,0.25)]",
+				"font-mono text-[13px]",
+			)}
+		>
+			<div ref={listRef}>
+				{candidates.map((name, i) => {
+					const active = i === selectedIndex;
+					return (
+						<button
+							key={name}
+							type="button"
+							role="option"
+							aria-selected={active}
+							onClick={() => onPick(name)}
+							onMouseEnter={() => onSelectionChange(i)}
+							onMouseDown={(e) => e.preventDefault()}
+							className={cn(
+								"block w-full px-3 py-1.5 text-left",
+								active ? "bg-accent-soft/60" : "hover:bg-paper-3/60",
+							)}
+						>
+							<span className={cn("font-medium", active ? "text-accent" : "text-ink")}>
+								{name}
+							</span>
+						</button>
+					);
+				})}
+			</div>
+			<div className="border-t border-line bg-paper px-3 py-1 font-mono text-2xs text-ink-3">
+				↑↓ navigate · enter/tab pick · esc dismiss
+			</div>
+		</div>
+	);
 }

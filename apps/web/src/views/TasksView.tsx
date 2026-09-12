@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
 	DndContext,
@@ -13,19 +14,23 @@ import {
 	SortableContext,
 	horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Settings2 } from "lucide-react";
+import { AlertCircle, Mic, Settings2 } from "lucide-react";
 
-import type { Task, TaskState } from "@omp-deck/protocol";
+import type { MachineInfo, Task, TaskState } from "@omp-deck/protocol";
 
 import { Layout } from "@/components/Layout";
 import { Column } from "@/components/tasks/Column";
 import { TaskCardBody } from "@/components/tasks/TaskCard";
 import { TaskModal } from "@/components/tasks/TaskModal";
 import { StateConfig } from "@/components/tasks/StateConfig";
+import { VoiceRecorder } from "@/components/VoiceRecorder";
+import { cn } from "@/lib/utils";
+import { machinesApi } from "@/lib/machines-api";
 import { tasksApi } from "@/lib/tasks-api";
 import { useStore } from "@/lib/store";
 
 export function TasksView() {
+	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const setPendingDraft = useStore((s) => s.setPendingDraft);
@@ -35,8 +40,32 @@ export function TasksView() {
 
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [states, setStates] = useState<TaskState[]>([]);
+	const [machines, setMachines] = useState<MachineInfo[]>([]);
 	const [error, setError] = useState<string | undefined>();
 	const [loading, setLoading] = useState(true);
+	// Voice-driven create: pick target column (backlog/active/block/done),
+	// speak, server transcribes locally, single POST inserts the task.
+	// Errors stay visible until the next attempt or the user dismisses.
+	const [voiceStateId, setVoiceStateId] = useState<string | undefined>();
+	const [voiceTranscript, setVoiceTranscript] = useState<string | undefined>();
+	const [voiceBusy, setVoiceBusy] = useState(false);
+	const [voiceError, setVoiceError] = useState<string | undefined>();
+	const [voiceLanguage, setVoiceLanguage] = useState<string | undefined>();
+
+	// agentId → machine name for card badges + open-on-machine labels.
+	// Local tasks get no badge (local is the implicit default).
+	const machineNameById = useMemo(() => {
+		const map: Record<string, string> = {};
+		for (const m of machines) map[m.id] = m.name;
+		return map;
+	}, [machines]);
+
+	useEffect(() => {
+		void machinesApi
+			.list()
+			.then((resp) => setMachines(resp.machines))
+			.catch((err) => console.warn("machines fetch failed", err));
+	}, []);
 
 	const [openTask, setOpenTask] = useState<Task | undefined>();
 	const [showStateConfig, setShowStateConfig] = useState(false);
@@ -107,6 +136,39 @@ export function TasksView() {
 			setError(String(e));
 		}
 	}
+
+	const handleVoiceTranscript = useCallback(
+		async (text: string, language: string): Promise<void> => {
+			const trimmed = text.trim();
+			setVoiceTranscript(trimmed);
+			setVoiceLanguage(language);
+			if (!trimmed) {
+				setVoiceError("transcript was empty");
+				return;
+			}
+			// Default to the first column if the user hasn't picked one yet.
+			const target = voiceStateId ?? states[0]?.id;
+			if (!target) {
+				setVoiceError("no columns configured — open the column editor first");
+				return;
+			}
+			setVoiceBusy(true);
+			setVoiceError(undefined);
+			try {
+				const created = await tasksApi.create({ title: trimmed, stateId: target });
+				setTasks((prev) => [...prev, created]);
+			} catch (e) {
+				setVoiceError(`create failed: ${e instanceof Error ? e.message : String(e)}`);
+			} finally {
+				setVoiceBusy(false);
+			}
+		},
+		[voiceStateId, states],
+	);
+
+	const handleVoiceError = useCallback((msg: string): void => {
+		setVoiceError(msg);
+	}, []);
 
 	function onDragStart(ev: DragStartEvent): void {
 		const dragType = ev.active.data.current?.type as string | undefined;
@@ -235,7 +297,7 @@ export function TasksView() {
 
 	async function deleteOpenTask(): Promise<void> {
 		if (!openTask) return;
-		if (!confirm(`Delete "${openTask.title}"?`)) return;
+		if (!confirm(t('Delete "{{title}}"?', { title: openTask.title }))) return;
 		try {
 			await tasksApi.remove(openTask.id);
 			setTasks((prev) => prev.filter((t) => t.id !== openTask.id));
@@ -254,16 +316,32 @@ export function TasksView() {
 	}
 
 	async function openInChat(task: Task): Promise<void> {
-		const cwd = task.cwd || defaultCwd;
+		// Assigned tasks open on their machine (agentId); the session cwd
+		// prefers the task's own cwd, then the machine's default, then the
+		// deck default.
+		const agentId = task.assignedAgent && task.assignedAgent !== "local" ? task.assignedAgent : undefined;
+		const machine = agentId ? machines.find((m) => m.id === agentId) : undefined;
+		const cwd = task.cwd || machine?.defaultCwd || defaultCwd;
 		try {
-			await createSession({ cwd });
+			await createSession({ cwd, ...(agentId ? { agentId } : {}) });
 		} catch (e) {
 			console.warn("createSession failed; falling back to draft only", e);
 		}
 		setPendingDraft({
 			text: `# ${task.title}\n\n${task.body}`.trim(),
 		});
-		navigate("/");
+		navigate("/chat");
+	}
+
+	async function assignOpenTask(agentId: string | null): Promise<void> {
+		if (!openTask) return;
+		try {
+			const updated = await tasksApi.assign(openTask.id, agentId);
+			setOpenTask(updated);
+			setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+		} catch (e) {
+			setError(String(e));
+		}
 	}
 
 	return (
@@ -273,24 +351,87 @@ export function TasksView() {
 				main={
 					<div className="flex h-full min-h-0 flex-col">
 						<div className="flex h-10 shrink-0 items-center gap-2 border-b border-line bg-paper px-3">
-							<div className="meta">Kanban</div>
+							<div className="meta">{t("Kanban")}</div>
 							<div className="text-xs text-ink-3">
-								{tasks.length} task{tasks.length === 1 ? "" : "s"} · {states.length} columns
+								{tasks.length} {t(tasks.length === 1 ? "task" : "tasks")} · {states.length} {t(states.length === 1 ? "column" : "columns")}
 							</div>
+							<label className="ml-auto inline-flex items-center gap-1 font-mono text-2xs uppercase tracking-meta text-ink-3">
+								<Mic className="h-3 w-3" />
+								<span>voice →</span>
+								<select
+									aria-label="Voice target column"
+									title="Column new voice tasks land in"
+									value={voiceStateId ?? states[0]?.id ?? ""}
+									onChange={(e) => setVoiceStateId(e.target.value || undefined)}
+									disabled={states.length === 0 || voiceBusy}
+									className="h-7 rounded-md border border-line bg-paper-2 px-1 text-2xs text-ink-2 focus:outline-none disabled:opacity-60"
+								>
+									{states.map((s) => (
+										<option key={s.id} value={s.id}>
+											{s.name}
+										</option>
+									))}
+								</select>
+							</label>
+							<VoiceRecorder
+								disabled={states.length === 0 || voiceBusy}
+								onTranscribe={(text, language) => void handleVoiceTranscript(text, language)}
+								onError={handleVoiceError}
+							/>
 							<button
 								type="button"
 								onClick={() => {
 									setShowStateConfig((v) => !v);
 									setInspectorOpen(true);
 								}}
+								data-tooltip-key="kanban.columns-edit"
 								className="btn-ghost ml-auto h-7 px-2 text-xs"
-								title="Edit columns"
+								title={t("Edit columns")}
 							>
 								<Settings2 className="h-3.5 w-3.5" />
-								Columns
+								{t("Columns")}
 							</button>
 						</div>
 
+						{(voiceTranscript || voiceError || voiceBusy) ? (
+							<div
+								className={cn(
+									"flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-3 py-1 font-mono text-2xs",
+									voiceError ? "bg-danger/10 text-danger" : "bg-paper-2 text-ink-2",
+								)}
+							>
+								<span className="uppercase tracking-meta text-ink-3">voice</span>
+								{voiceBusy ? (
+									<span>transcribing &amp; posting…</span>
+								) : null}
+								{voiceError ? (
+									<span className="inline-flex items-center gap-1">
+										<AlertCircle className="h-3 w-3" />
+										{voiceError}
+									</span>
+								) : null}
+								{voiceTranscript ? (
+									<span className="max-w-[60ch] truncate" title={voiceTranscript}>
+										{voiceTranscript}
+									</span>
+								) : null}
+								{voiceLanguage ? (
+									<span className="text-ink-3">[{voiceLanguage}]</span>
+								) : null}
+								<button
+									type="button"
+									onClick={() => {
+										setVoiceTranscript(undefined);
+										setVoiceError(undefined);
+										setVoiceLanguage(undefined);
+									}}
+									className="ml-auto text-ink-3 hover:text-ink"
+									title="Clear voice transcript banner"
+								>
+									dismiss
+								</button>
+							</div>
+						) : null}
 						{error ? (
 							<div className="border-b border-line bg-danger/10 px-3 py-1 font-mono text-xs text-danger">
 								{error}
@@ -299,7 +440,7 @@ export function TasksView() {
 
 						{loading ? (
 							<div className="flex flex-1 items-center justify-center text-sm text-ink-3">
-								Loading…
+								{t("Loading…")}
 							</div>
 						) : (
 							<DndContext
@@ -318,6 +459,7 @@ export function TasksView() {
 												key={s.id}
 												state={s}
 												tasks={tasksByState[s.id] ?? []}
+												machineNameById={machineNameById}
 												onCreate={(stateId, title) => void onCreate(stateId, title)}
 												onOpen={(t) => setOpenTask(t)}
 												onRenameRequest={() => {
@@ -329,7 +471,7 @@ export function TasksView() {
 										))}
 										{states.length === 0 ? (
 											<div className="flex flex-1 items-center justify-center text-sm text-ink-3">
-												No columns. Open the column editor to add one.
+												{t("No columns. Open the column editor to add one.")}
 											</div>
 										) : null}
 									</div>
@@ -342,7 +484,15 @@ export function TasksView() {
 								>
 									{draggingTask ? (
 										<div className="w-72 px-2">
-											<TaskCardBody task={draggingTask} lifted />
+											<TaskCardBody
+												task={draggingTask}
+												lifted
+												machineName={
+													draggingTask.assignedAgent
+														? machineNameById[draggingTask.assignedAgent]
+														: undefined
+												}
+											/>
 										</div>
 									) : null}
 									{draggingColumnId ? (() => {
@@ -382,8 +532,10 @@ export function TasksView() {
 			<TaskModal
 				task={openTask ?? null}
 				states={states}
+				machines={machines}
 				onClose={() => setOpenTask(undefined)}
 				onSave={(patch) => void saveTask(patch)}
+				onAssign={(agentId) => void assignOpenTask(agentId)}
 				onDelete={() => void deleteOpenTask()}
 				onArchive={() => void archiveOpenTask()}
 				onOpenInChat={() => openTask && void openInChat(openTask)}
@@ -393,18 +545,20 @@ export function TasksView() {
 }
 
 function EmptyInspector() {
+	const { t } = useTranslation();
 	return (
 		<div className="flex h-full items-center justify-center px-4 text-center font-mono text-2xs text-ink-3">
-			Click a task to edit, or the Columns button to configure states.
+			{t("Click a task to edit, or the Columns button to configure states.")}
 		</div>
 	);
 }
 
 function TasksSidebar({ tasks, states }: { tasks: Task[]; states: TaskState[] }) {
+	const { t } = useTranslation();
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			<div className="border-b border-line px-3 py-3">
-				<div className="meta mb-1.5">Overview</div>
+				<div className="meta mb-1.5">{t("Overview")}</div>
 				<div className="space-y-1">
 					{states.map((s) => {
 						const n = tasks.filter((t) => t.stateId === s.id).length;
@@ -422,11 +576,11 @@ function TasksSidebar({ tasks, states }: { tasks: Task[]; states: TaskState[] })
 				</div>
 			</div>
 			<div className="px-3 py-3 text-xs text-ink-3">
-				<div className="meta mb-1.5">Tips</div>
+				<div className="meta mb-1.5">{t("Tips")}</div>
 				<ul className="list-disc space-y-1 pl-4">
-					<li>Drag cards between columns to change state</li>
-					<li>Click a column name to edit it</li>
-					<li>Open in chat sends the task as the first prompt</li>
+					<li>{t("Drag cards between columns to change state")}</li>
+					<li>{t("Click a column name to edit it")}</li>
+					<li>{t("Open in chat sends the task as the first prompt")}</li>
 				</ul>
 			</div>
 		</div>

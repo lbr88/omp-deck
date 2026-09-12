@@ -1,11 +1,13 @@
 import type { RoutineSpec, RoutineStep, ValidationError } from "@omp-deck/protocol";
 
+import i18n from "@/i18n";
+
 export const STEP_ID_PATTERN = /^[a-z][a-z0-9_]*$/;
 export const STEP_ID_REQUIREMENT = "use lowercase letters, numbers, and underscores; start with a letter";
 
 export function validateStepId(id: string): string | undefined {
-	if (id.length === 0) return "required";
-	return STEP_ID_PATTERN.test(id) ? undefined : STEP_ID_REQUIREMENT;
+	if (id.length === 0) return i18n.t("required");
+	return STEP_ID_PATTERN.test(id) ? undefined : i18n.t(STEP_ID_REQUIREMENT);
 }
 
 export interface RoutineValidationMessage {
@@ -42,7 +44,7 @@ export function summarizeRoutineValidationErrors(
 		messages.push(message);
 	}
 
-	return messages.length > 0 ? messages : [{ path: "/", message: "Spec is invalid" }];
+	return messages.length > 0 ? messages : [{ path: "/", message: i18n.t("Spec is invalid") }];
 }
 
 function summarizeValidationError(error: ValidationError, spec: RoutineSpec): RoutineValidationMessage | undefined {
@@ -53,10 +55,18 @@ function summarizeValidationError(error: ValidationError, spec: RoutineSpec): Ro
 		const stepIndex = Number(stepMatch[1]);
 		const field = stepMatch[2];
 		const step = spec.steps[stepIndex];
-		const label = `Step ${stepIndex + 1}${step?.type ? ` (${step.type})` : ""}`;
+		const label = step?.type
+			? i18n.t("Step {{n}} ({{type}})", { n: stepIndex + 1, type: step.type })
+			: i18n.t("Step {{n}}", { n: stepIndex + 1 });
 
 		if (field === "id" && error.keyword === "pattern") {
-			return { path: error.path, message: `${label} id: ${STEP_ID_REQUIREMENT}` };
+			return {
+				path: error.path,
+				message: i18n.t("{{label}} id: {{req}}", {
+					label,
+					req: i18n.t(STEP_ID_REQUIREMENT),
+				}),
+			};
 		}
 		if (field === "type" && error.keyword === "const" && step?.type) {
 			return undefined;
@@ -65,11 +75,18 @@ function summarizeValidationError(error: ValidationError, spec: RoutineSpec): Ro
 			const missing = typeof error.params.missingProperty === "string"
 				? error.params.missingProperty
 				: undefined;
-			if (!missing) return { path: error.path, message: `${label}: ${error.message}` };
+			if (!missing) {
+				return { path: error.path, message: i18n.t("{{label}}: {{message}}", { label, message: error.message }) };
+			}
 			if (step?.type && !REQUIRED_BY_TYPE[step.type].includes(missing)) return undefined;
-			return { path: error.path, message: `${label}: missing ${missing}` };
+			return { path: error.path, message: i18n.t("{{label}}: missing {{field}}", { label, field: missing }) };
 		}
-		return { path: error.path, message: `${label}${field ? ` ${field}` : ""}: ${error.message}` };
+		return {
+			path: error.path,
+			message: field
+				? i18n.t("{{label}} {{field}}: {{message}}", { label, field, message: error.message })
+				: i18n.t("{{label}}: {{message}}", { label, message: error.message }),
+		};
 	}
 
 	return { path: error.path || "/", message: `${error.path || "/"}: ${error.message}` };

@@ -10,9 +10,11 @@
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { memo } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { RoutineStep, RoutineStepRun, RoutineStepStatus } from "@omp-deck/protocol";
 
+import i18n from "@/i18n";
 import type { StepNode as StepNodeType } from "../graph-types";
 
 /**
@@ -52,7 +54,7 @@ function summarize(step: RoutineStep): string {
 		case "transform":
 			return step.body?.split("\n")[0]?.slice(0, 80) ?? "";
 		case "wait":
-			return `wait ${step.duration_secs}s`;
+			return i18n.t("wait {{secs}}s", { secs: step.duration_secs });
 		case "set_state":
 			return Object.keys(step.state ?? {}).join(", ");
 		default:
@@ -64,6 +66,7 @@ export const StepNode = memo(function StepNode({
 	data,
 	selected,
 }: NodeProps<StepNodeType>) {
+	const { t } = useTranslation();
 	const { step, compileError, isIfNode, stepRun } = data;
 	const summary = summarize(step);
 	const tint = TYPE_TINT[step.type] ?? "bg-paper-2 border-line";
@@ -105,7 +108,7 @@ export const StepNode = memo(function StepNode({
 				{compileError ? (
 					<span
 						className="font-mono text-2xs font-bold text-danger"
-						aria-label="Compile error"
+						aria-label={t("Compile error")}
 					>
 						!
 					</span>
@@ -119,7 +122,7 @@ export const StepNode = memo(function StepNode({
 				</div>
 			) : (
 				<div className="px-2 py-1.5 font-mono text-2xs italic text-ink-4">
-					(empty)
+					{t("(empty)")}
 				</div>
 			)}
 			{step.when ? (
@@ -202,11 +205,12 @@ const STATUS_DOT: Record<RoutineStepStatus, string> = {
  * design system.
  */
 function StatusBadge({ run }: { run: RoutineStepRun }): JSX.Element {
+	const { t } = useTranslation();
 	return (
 		<span
 			className={`h-2 w-2 rounded-full ${STATUS_DOT[run.status]}`}
-			aria-label={`status: ${run.status}`}
-			title={`status: ${run.status}`}
+			aria-label={t("status: {{status}}", { status: run.status })}
+			title={t("status: {{status}}", { status: run.status })}
 		/>
 	);
 }
@@ -238,10 +242,10 @@ function RunFootline({ run }: { run: RoutineStepRun }): JSX.Element | null {
 }
 
 function formatDur(ms: number): string {
-	if (ms < 1000) return `${Math.round(ms)}ms`;
+	if (ms < 1000) return i18n.t("{{n}}ms", { n: Math.round(ms) });
 	const s = ms / 1000;
-	if (s < 60) return `${s.toFixed(1)}s`;
+	if (s < 60) return i18n.t("{{s}}s", { s: s.toFixed(1) });
 	const m = Math.floor(s / 60);
 	const rem = Math.round(s - m * 60);
-	return `${m}m${rem}s`;
+	return i18n.t("{{m}}m{{s}}s", { m, s: rem });
 }

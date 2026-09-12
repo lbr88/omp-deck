@@ -40,6 +40,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type {
 	RoutineDeckAction,
@@ -50,6 +51,7 @@ import type {
 	RoutineStepRun,
 } from "@omp-deck/protocol";
 
+import i18n from "@/i18n";
 import { removeStep, replaceStep, scaffoldStep } from "../spec-yaml";
 
 import { AddStepPalette } from "./AddStepPalette";
@@ -144,6 +146,7 @@ function RoutineCanvasInner({
 	onSelectRun,
 	routineId,
 }: RoutineCanvasProps): JSX.Element {
+	const { t } = useTranslation();
 	// Re-derive the React Flow graph whenever the spec's steps or layout change.
 	const imported = useMemo(
 		() => importFromSpec(spec),
@@ -477,9 +480,9 @@ function RoutineCanvasInner({
 				{empty ? (
 					<div className="pointer-events-none absolute inset-0 flex items-center justify-center">
 						<div className="rounded border border-dashed border-line bg-paper-2/80 px-4 py-3 text-center font-mono text-2xs text-ink-3">
-							No steps yet.
+							{t("No steps yet.")}
 							<br />
-							Click <span className="font-semibold text-ink-2">+ Add step</span> above to begin.
+							{t("Click {{add}} above to begin.", { add: <span className="font-semibold text-ink-2">+ {t("Add step")}</span> })}
 						</div>
 					</div>
 				) : null}
@@ -584,6 +587,7 @@ function CompileErrorStrip({
 }: {
 	errors: ReadonlyArray<CompileError>;
 }): JSX.Element {
+	const { t } = useTranslation();
 	const visible = errors.slice(0, 3);
 	const overflow = errors.length - visible.length;
 	return (
@@ -603,7 +607,7 @@ function CompileErrorStrip({
 			))}
 			{overflow > 0 ? (
 				<div className="rounded border border-danger/40 bg-danger/5 px-3 py-1 text-center font-mono text-2xs text-danger">
-					+{overflow} more
+					{t("+{{count}} more", { count: overflow })}
 				</div>
 			) : null}
 		</div>
@@ -628,16 +632,17 @@ function RunOverlayPicker({
 	selectedRunId: string | null;
 	onSelect: (id: string | null) => void;
 }): JSX.Element {
+	const { t } = useTranslation();
 	return (
 		<div className="pointer-events-auto absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded border border-line bg-paper-2/95 px-2 py-1 shadow-sm">
 			<span className="font-mono text-2xs uppercase tracking-meta text-ink-3">
-				run
+				{t("run")}
 			</span>
 			<select
 				value={selectedRunId ?? ""}
 				onChange={(e) => onSelect(e.target.value || null)}
 				className="field h-6 max-w-[220px] truncate font-mono text-2xs"
-				aria-label="Select run to overlay"
+				aria-label={t("Select run to overlay")}
 			>
 				{runs.map((r) => (
 					<option key={r.id} value={r.id}>
@@ -651,12 +656,12 @@ function RunOverlayPicker({
 
 function formatRunLabel(run: RoutineRun): string {
 	const status = !run.endedAt
-		? "running"
+		? i18n.t("running")
 		: run.abortReason
-			? "aborted"
+			? i18n.t("aborted")
 			: run.exitCode === 0
-				? "ok"
-				: "fail";
+				? i18n.t("ok")
+				: i18n.t("fail");
 	const ts = run.startedAt;
 	// "MM-DD HH:MM" — short enough for a 220px select, precise enough to
 	// disambiguate adjacent runs.

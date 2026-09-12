@@ -14,6 +14,7 @@
  */
 
 import type { RoutineStep } from "@omp-deck/protocol";
+import i18n from "../../i18n.ts";
 import { costMicros } from "../budget.ts";
 import { renderString } from "../template.ts";
 import type { RunContext, StepResult } from "../types.ts";
@@ -75,7 +76,7 @@ export async function executeAgentStep(
 					status: "aborted",
 					stdoutExcerpt: stdout,
 					stderrExcerpt: stderr,
-					error: "aborted",
+					error: i18n.t("aborted"),
 					durationMs,
 				};
 			}
@@ -84,7 +85,7 @@ export async function executeAgentStep(
 					status: "failed",
 					stdoutExcerpt: stdout,
 					stderrExcerpt: stderr,
-					error: `omp exit code ${exitCode}`,
+					error: i18n.t("omp exit code {{code}}", { code: exitCode }),
 					durationMs,
 				};
 			}
@@ -102,7 +103,9 @@ export async function executeAgentStep(
 				try {
 					json = JSON.parse(stdout.trim());
 				} catch (err) {
-					parseError = `structured_output parse failure: ${String(err)}`;
+					parseError = i18n.t("structured_output parse failure: {{detail}}", {
+						detail: String(err),
+					});
 				}
 				if (step.structured_output.strict !== false && parseError) {
 					return {

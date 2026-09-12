@@ -3,6 +3,7 @@
  * state keys. Lives under the Builder tab's "Settings" subsection.
  */
 import type { RoutineBudget, RoutineConcurrency, RoutineSpec } from "@omp-deck/protocol";
+import { useTranslation } from "react-i18next";
 
 import { Field, NumInput, TagInput, TextInput } from "./form-primitives";
 
@@ -23,6 +24,7 @@ const CONCURRENCY_OPTIONS: ReadonlyArray<{ value: RoutineConcurrency; label: str
 ];
 
 export function SettingsForm({ spec, onChange }: Props) {
+	const { t } = useTranslation();
 	function patchSpec(p: Partial<RoutineSpec>): void {
 		onChange({ ...spec, ...p });
 	}
@@ -55,7 +57,7 @@ export function SettingsForm({ spec, onChange }: Props) {
 						else next.description = v;
 						onChange(next);
 					}}
-					placeholder="optional, what this routine does"
+					placeholder={t("optional, what this routine does")}
 				/>
 			</Field>
 			<Field label="concurrency">
@@ -66,12 +68,12 @@ export function SettingsForm({ spec, onChange }: Props) {
 				>
 					{CONCURRENCY_OPTIONS.map((o) => (
 						<option key={o.value} value={o.value}>
-							{o.label} — {o.help}
+							{o.label} — {t(o.help)}
 						</option>
 					))}
 				</select>
 			</Field>
-			<Field label="timezone (IANA)">
+			<Field label={t("timezone (IANA)")}>
 				<TextInput
 					value={spec.timezone ?? ""}
 					onChange={(v) => {
@@ -97,7 +99,7 @@ export function SettingsForm({ spec, onChange }: Props) {
 				/>
 			</Field>
 			<div>
-				<div className="meta mb-1.5">Budget</div>
+				<div className="meta mb-1.5">{t("Budget")}</div>
 				<div className="grid grid-cols-2 gap-2">
 					<Field label="max_duration_secs">
 						<NumInput
@@ -146,7 +148,7 @@ export function SettingsForm({ spec, onChange }: Props) {
 					</Field>
 				</div>
 			</div>
-			<Field label="declared state keys (informational)">
+			<Field label={t("declared state keys (informational)")}>
 				<TagInput
 					values={spec.state?.declared_keys ?? []}
 					onChange={(v) => {

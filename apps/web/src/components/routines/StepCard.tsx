@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, ChevronsDown, ChevronsUp, Trash2 } from "lucide-react";
 
 import type { RoutineStep } from "@omp-deck/protocol";
@@ -29,6 +30,7 @@ export function StepCard({
 	onMoveUp,
 	onMoveDown,
 }: Props) {
+	const { t } = useTranslation();
 	const [open, setOpen] = useState(true);
 	const idsExcludingSelf = existingIds.filter((_id, i) => i !== index);
 
@@ -39,22 +41,22 @@ export function StepCard({
 					type="button"
 					onClick={() => setOpen((o) => !o)}
 					className="btn-ghost h-6 w-6 p-0"
-					aria-label={open ? "Collapse" : "Expand"}
+					aria-label={open ? t("Collapse") : t("Expand")}
 				>
 					{open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
 				</button>
 				<span className={`rounded px-1.5 py-0.5 font-mono text-2xs uppercase tracking-meta ${STEP_TYPE_BG[step.type]}`}>
 					{step.type}
 				</span>
-				<span className="font-mono text-2xs text-ink-2">{step.id || "(no id)"}</span>
+				<span className="font-mono text-2xs text-ink-2">{step.id || t("(no id)")}</span>
 				<div className="ml-auto flex items-center gap-0.5">
 					<button
 						type="button"
 						onClick={onMoveUp}
 						disabled={index === 0}
 						className="btn-ghost h-6 w-6 p-0 disabled:opacity-30"
-						aria-label="Move up"
-						title="Move up"
+						aria-label={t("Move up")}
+						title={t("Move up")}
 					>
 						<ChevronsUp className="h-3.5 w-3.5" />
 					</button>
@@ -63,8 +65,8 @@ export function StepCard({
 						onClick={onMoveDown}
 						disabled={index === total - 1}
 						className="btn-ghost h-6 w-6 p-0 disabled:opacity-30"
-						aria-label="Move down"
-						title="Move down"
+						aria-label={t("Move down")}
+						title={t("Move down")}
 					>
 						<ChevronsDown className="h-3.5 w-3.5" />
 					</button>
@@ -72,8 +74,8 @@ export function StepCard({
 						type="button"
 						onClick={onRemove}
 						className="btn-ghost h-6 w-6 p-0 text-ink-4 hover:text-danger"
-						aria-label="Remove step"
-						title="Remove"
+						aria-label={t("Remove step")}
+						title={t("Remove")}
 					>
 						<Trash2 className="h-3.5 w-3.5" />
 					</button>

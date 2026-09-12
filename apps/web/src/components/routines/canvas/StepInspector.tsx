@@ -13,11 +13,13 @@
  */
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ExternalLink, Trash2, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import type { RoutineStep, RoutineStepRun, RoutineStepStatus } from "@omp-deck/protocol";
 
+import i18n from "@/i18n";
 import { cn } from "@/lib/utils";
 
 import { StepCommonFields } from "../StepCommonFields";
@@ -84,6 +86,8 @@ export function StepInspector({
 		return () => document.removeEventListener("keydown", onKey);
 	}, [step, onClose]);
 
+	const { t } = useTranslation();
+
 	if (!step) return null;
 
 	const idsExcludingSelf = existingIds.filter((id) => id !== step.id);
@@ -91,7 +95,7 @@ export function StepInspector({
 		<aside
 			data-testid="step-inspector"
 			data-mode={mode}
-			aria-label={`${step.type} ${step.id} inspector`}
+			aria-label={t("{{type}} {{id}} inspector", { type: step.type, id: step.id })}
 			className={
 				mode === "inline"
 					? "pointer-events-auto flex h-full w-[360px] flex-col border-l border-line bg-paper"
@@ -105,15 +109,15 @@ export function StepInspector({
 					{step.type}
 				</span>
 				<span className="truncate font-mono text-2xs text-ink-2">
-					{step.id || "(no id)"}
+					{step.id || t("(no id)")}
 				</span>
 				<div className="ml-auto flex items-center gap-0.5">
 					<button
 						type="button"
 						onClick={onDelete}
 						className="btn-ghost h-7 w-7 p-0 text-ink-4 hover:text-danger"
-						aria-label="Delete step"
-						title="Delete step"
+						aria-label={t("Delete step")}
+						title={t("Delete step")}
 					>
 						<Trash2 className="h-3.5 w-3.5" />
 					</button>
@@ -121,8 +125,8 @@ export function StepInspector({
 						type="button"
 						onClick={onClose}
 						className="btn-ghost h-7 w-7 p-0 text-ink-3 hover:text-ink"
-						aria-label="Close inspector"
-						title="Close (Esc)"
+						aria-label={t("Close inspector")}
+						title={t("Close (Esc)")}
 					>
 						<X className="h-3.5 w-3.5" />
 					</button>
@@ -168,17 +172,22 @@ function BranchConditionForm({
 	step: Extract<RoutineStep, { type: "transform" }>;
 	onChange: (next: RoutineStep) => void;
 }): JSX.Element {
+	const { t } = useTranslation();
 	return (
 		<div className="space-y-2">
 			<div className="rounded border border-line bg-paper-2/40 px-2 py-1.5 font-mono text-2xs leading-snug text-ink-3">
-				Wire this node's <span className="text-success">true</span> and{" "}
-				<span className="text-danger">false</span> handles to downstream
-				steps. The compiler turns each branch edge into a{" "}
-				<code className="text-ink-2">when:</code> gate on its target.
+				{t(
+					"Wire this node's {{true}} and {{false}} handles to downstream steps. The compiler turns each branch edge into a {{when}} gate on its target.",
+					{
+						true: <span className="text-success">true</span>,
+						false: <span className="text-danger">false</span>,
+						when: <code className="text-ink-2">when:</code>,
+					},
+				)}
 			</div>
 			<label className="block space-y-1">
 				<span className="font-mono text-2xs uppercase tracking-meta text-ink-3">
-					condition (returns boolean)
+					{t("condition (returns boolean)")}
 				</span>
 				<textarea
 					value={step.body}
@@ -190,7 +199,7 @@ function BranchConditionForm({
 				/>
 			</label>
 			<div className="font-mono text-2xs text-ink-3">
-				Sandboxed (quickjs, 100ms cap). Same globals as a transform:{" "}
+				{t("Sandboxed (quickjs, 100ms cap). Same globals as a transform:")}{" "}
 				<code>run</code>, <code>trigger</code>, <code>steps</code>,{" "}
 				<code>state</code>, <code>env</code>, <code>secrets</code>.
 			</div>
@@ -220,6 +229,7 @@ function LastRunSection({
 	routineId?: string;
 	runId?: string | null;
 }): JSX.Element {
+	const { t } = useTranslation();
 	type Pane = "stdout" | "stderr" | "json" | "error";
 	const tabs: Pane[] = [];
 	if (run.stdoutExcerpt) tabs.push("stdout");
@@ -247,7 +257,7 @@ function LastRunSection({
 		>
 			<header className="flex items-center gap-2 border-b border-line px-2 py-1.5">
 				<span className="font-mono text-2xs uppercase tracking-meta text-ink-3">
-					last run
+					{t("last run")}
 				</span>
 				<StatusPill status={run.status} />
 				<span className="font-mono text-2xs text-ink-3">{dur}</span>
@@ -255,17 +265,17 @@ function LastRunSection({
 					<Link
 						to={deepLink}
 						className="ml-auto flex items-center gap-1 font-mono text-2xs text-ink-3 hover:text-ink"
-						title="Open in Run Detail"
+						title={t("Open in Run Detail")}
 					>
 						<ExternalLink className="h-3 w-3" />
-						run detail
+						{t("run detail")}
 					</Link>
 				) : null}
 			</header>
 
 			{tabs.length === 0 ? (
 				<div className="px-2 py-2 font-mono text-2xs italic text-ink-4">
-					No captured output for this step.
+					{t("No captured output for this step.")}
 				</div>
 			) : (
 				<>
@@ -302,6 +312,7 @@ function PaneBody({
 	pane: "stdout" | "stderr" | "json" | "error" | null;
 	run: RoutineStepRun;
 }): JSX.Element | null {
+	const { t } = useTranslation();
 	if (!pane) return null;
 	const text =
 		pane === "stdout"
@@ -319,7 +330,7 @@ function PaneBody({
 				tone,
 			)}
 		>
-			{text || "(empty)"}
+			{text || t("(empty)")}
 		</pre>
 	);
 }
@@ -350,12 +361,12 @@ function StatusPill({ status }: { status: RoutineStepStatus }): JSX.Element {
 }
 
 function formatDur(ms: number): string {
-	if (ms < 1000) return `${Math.round(ms)}ms`;
+	if (ms < 1000) return i18n.t("{{n}}ms", { n: Math.round(ms) });
 	const s = ms / 1000;
-	if (s < 60) return `${s.toFixed(1)}s`;
+	if (s < 60) return i18n.t("{{s}}s", { s: s.toFixed(1) });
 	const m = Math.floor(s / 60);
 	const rem = Math.round(s - m * 60);
-	return `${m}m${rem}s`;
+	return i18n.t("{{m}}m{{s}}s", { m, s: rem });
 }
 
 function prettyJson(raw: string): string {

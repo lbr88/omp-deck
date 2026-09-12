@@ -1,7 +1,9 @@
+import { useTranslation } from "react-i18next";
 import type { ToolRendererProps } from "./ToolCallCard";
 import { ArgRow, extractResultText } from "./shared";
 
 export function GenerateImageTool({ args, stream }: ToolRendererProps) {
+	const { t } = useTranslation();
 	const subject = String((args.subject as string | undefined) ?? "");
 	const result = stream?.result;
 	const imageData = extractImage(result);
@@ -13,7 +15,7 @@ export function GenerateImageTool({ args, stream }: ToolRendererProps) {
 			{imageData ? (
 				<img
 					src={`data:${imageData.mimeType};base64,${imageData.data}`}
-					alt="generated"
+					alt={t("generated")}
 					className="max-h-96 rounded border border-line"
 				/>
 			) : null}

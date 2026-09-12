@@ -1,5 +1,7 @@
 import type { EnvRestartTarget, EnvValueType } from "@omp-deck/protocol";
 
+import i18n from "./i18n";
+
 export interface EnvSchemaEntry {
 	key: string;
 	defaultValue?: string;
@@ -106,6 +108,150 @@ export const ENV_SCHEMA: EnvSchemaEntry[] = [
 		description: "Directory for deck-managed .env and audit log.",
 	},
 	{
+		key: "OMP_DECK_GHOLAM_EXTERNAL_URL",
+		valueType: "string",
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description: "External URL the deck web uses to reach the sidecar (e.g. http://localhost:47900). Empty = same-origin.",
+	},
+	{
+		key: "OMP_DECK_GHOLAM_PORT",
+		defaultValue: "47900",
+		valueType: "int",
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description: "Port the Gholam sidecar binds (default 47900). Restart required.",
+	},
+	{
+		key: "OMP_DECK_KB_ROOT",
+		valueType: "string",
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description: "Knowledge-base root used by the deck and Gholam sidecar.",
+	},
+	{
+		key: "OMP_DECK_PUBLIC_URL",
+		valueType: "string",
+		sensitive: false,
+		restartRequired: false,
+		hotApply: true,
+		description:
+			"Public origin this deck is reached on (e.g. https://deck.example.com). Used in onboarding text, agent API hints and OAuth instructions so they stop saying localhost. Serving is same-origin and does not depend on this.",
+	},
+	{
+		key: "OMP_DECK_AUTH_MODE",
+		defaultValue: "auto",
+		valueType: "enum",
+		options: ["auto", "on", "off"],
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description:
+			"Require sign-in. `auto` enables it whenever the server is not bound to loopback, or when a password is configured. `off` is ignored on a non-loopback bind.",
+	},
+	{
+		key: "OMP_DECK_AUTH_USERNAME",
+		defaultValue: "admin",
+		valueType: "string",
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description: "Username for the account created from the environment on first boot.",
+	},
+	{
+		key: "OMP_DECK_AUTH_PASSWORD",
+		valueType: "string",
+		sensitive: true,
+		restartRequired: true,
+		hotApply: false,
+		description:
+			"Bootstrap password, hashed on boot. Re-read on every boot, so changing it resets the account password and signs out every device — the recovery path for a forgotten password. Prefer OMP_DECK_AUTH_PASSWORD_HASH.",
+	},
+	{
+		key: "OMP_DECK_AUTH_PASSWORD_HASH",
+		valueType: "string",
+		sensitive: true,
+		restartRequired: true,
+		hotApply: false,
+		description:
+			"argon2id digest of the bootstrap password, so no plaintext lives in the environment. Applied only when creating the account.",
+	},
+	{
+		key: "OMP_DECK_AUTH_SETUP_TOKEN",
+		valueType: "string",
+		sensitive: true,
+		restartRequired: true,
+		hotApply: false,
+		description:
+			"Shared secret required to complete first-run setup. Closes the window where a public deck with no account could be claimed by whoever finds it first.",
+	},
+	{
+		key: "OMP_DECK_AUTH_SESSION_TTL_MS",
+		defaultValue: "2592000000",
+		valueType: "int",
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description: "Session lifetime in milliseconds. Default 30 days.",
+	},
+	{
+		key: "OMP_DECK_AUTH_COOKIE_NAME",
+		defaultValue: "omp_deck_session",
+		valueType: "string",
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description: "Session cookie name. Change it when two decks share one hostname.",
+	},
+	{
+		key: "OMP_DECK_AUTH_SECURE_COOKIE",
+		valueType: "boolean",
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description:
+			"Force the Secure cookie flag. Only needed when TLS terminates upstream and the proxy does not set X-Forwarded-Proto.",
+	},
+	{
+		key: "OMP_DECK_AUTH_MAX_ATTEMPTS",
+		defaultValue: "8",
+		valueType: "int",
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description: "Failed sign-ins per username+IP before a temporary lockout.",
+	},
+	{
+		key: "OMP_DECK_AUTH_LOCKOUT_MS",
+		defaultValue: "900000",
+		valueType: "int",
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description: "How long a lockout lasts, in milliseconds. Default 15 minutes.",
+	},
+	{
+		key: "OMP_DECK_TRUSTED_ORIGINS",
+		valueType: "string",
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description:
+			"Comma-separated extra origins allowed to make state-changing requests, beyond the request host and OMP_DECK_PUBLIC_URL.",
+	},
+	{
+		key: "OMP_DECK_API_TOKEN",
+		valueType: "string",
+		sensitive: true,
+		restartRequired: true,
+		hotApply: false,
+		description:
+			"Bearer token for non-browser callers (agent curl calls, the Telegram bridge, scripts). Generated and persisted in the deck data directory when unset.",
+	},
+	{
 		key: "OMP_DECK_API_BASE",
 		defaultValue: "http://127.0.0.1:8787",
 		valueType: "string",
@@ -121,6 +267,15 @@ export const ENV_SCHEMA: EnvSchemaEntry[] = [
 		restartRequired: true,
 		hotApply: false,
 		description: "omp SDK session/auth data directory.",
+	},
+	{
+		key: "OMP_DECK_MACHINES_FILE",
+		valueType: "path",
+		sensitive: false,
+		restartRequired: false,
+		hotApply: false,
+		description:
+			"Remote agent-host registry JSON file. Defaults to <dataDir>/machines.json. CRUD via Settings → Machines; changes apply on the next request (no restart).",
 	},
 	{
 		key: "LOG_LEVEL",
@@ -147,6 +302,55 @@ export const ENV_SCHEMA: EnvSchemaEntry[] = [
 		restartRequired: false,
 		hotApply: true,
 		description: "Default omp SDK model identifier.",
+	},
+	{
+		key: "GITHUB_TOKEN",
+		valueType: "string",
+		sensitive: true,
+		restartRequired: false,
+		hotApply: true,
+		description:
+			"Personal access token powering the GitHub panel in Explorer (list/clone your repos) and authenticated git push/pull for github.com remotes. GITHUB_PERSONAL_ACCESS_TOKEN also works and is shared with the github MCP server if configured.",
+	},
+	{
+		key: "GITHUB_PERSONAL_ACCESS_TOKEN",
+		valueType: "string",
+		sensitive: true,
+		restartRequired: true,
+		hotApply: false,
+		description: "GitHub PAT forwarded to the Gholam sidecar for github MCP calls.",
+	},
+	{
+		key: "MCP_OPENSHIP_TOKEN",
+		valueType: "string",
+		sensitive: true,
+		restartRequired: true,
+		hotApply: false,
+		description: "Token forwarded to the Gholam sidecar for OpenShip MCP calls.",
+	},
+	{
+		key: "MCP_PARALLEL_TOKEN",
+		valueType: "string",
+		sensitive: true,
+		restartRequired: true,
+		hotApply: false,
+		description: "Token forwarded to the Gholam sidecar for Parallel MCP calls.",
+	},
+	{
+		key: "EXA_API_KEY",
+		valueType: "string",
+		sensitive: true,
+		restartRequired: true,
+		hotApply: false,
+		description: "API key forwarded to the Gholam sidecar for Exa MCP calls.",
+	},
+	{
+		key: "TAVILY_API_KEY",
+		valueType: "string",
+		sensitive: true,
+		restartRequired: true,
+		hotApply: false,
+		description: "API key forwarded to the Gholam sidecar for Tavily MCP calls.",
 	},
 	{
 		key: "TELEGRAM_BOT_TOKEN",
@@ -190,6 +394,25 @@ export const ENV_SCHEMA: EnvSchemaEntry[] = [
 		hotApply: false,
 		description: "Provider API key used by the omp SDK. Replace only; never revealed in list responses.",
 	})),
+	{
+		key: "OMP_DECK_LANG",
+		defaultValue: "en",
+		valueType: "enum",
+		options: ["en"],
+		sensitive: false,
+		restartRequired: true,
+		hotApply: false,
+		description: "Server message language (English only). Restart the server to apply.",
+	},
+	{
+		key: "OMP_DECK_ACCESS_TOKEN",
+		valueType: "string",
+		sensitive: true,
+		restartRequired: true,
+		hotApply: false,
+		description:
+			"Bearer token required on every /api and /ws request when set (public deployments behind a VPN/tailnet). Leave empty for loopback-only setups. The web client reads it from localStorage `omp-deck:access-token`.",
+	},
 	{
 		key: "OMP_DECK_MAINTENANCE_GATE_DISABLED",
 		valueType: "boolean",
@@ -236,6 +459,15 @@ export const ENV_SCHEMA: EnvSchemaEntry[] = [
 		description:
 			"Deck-session org root the maintenance-gate uses to anchor captures. Set automatically by the server to ~/kb unless overridden or disabled.",
 	},
+	{
+		key: "OMP_DECK_CLONE_ROOT",
+		valueType: "path",
+		sensitive: false,
+		restartRequired: false,
+		hotApply: true,
+		description:
+			"Workspace root that the GitHub clone button targets. When unset, clones go to the first available workspace root (HOME on most systems). Set to e.g. ~/workspace to keep clones organized out of your home directory. Created on boot if missing.",
+	},
 ];
 
 export const ENV_SCHEMA_BY_KEY = new Map(ENV_SCHEMA.map((entry) => [entry.key, entry]));
@@ -253,7 +485,7 @@ export function validateEnvValue(entry: EnvSchemaEntry, value: string): string |
 		}
 	}
 	if (entry.valueType === "enum" && entry.options && !entry.options.includes(value.trim())) {
-		return `Expected one of: ${entry.options.join(", ")}`;
+		return i18n.t("Expected one of: {{options}}", { options: entry.options.join(", ") });
 	}
 	return undefined;
 }

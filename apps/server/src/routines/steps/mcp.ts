@@ -15,6 +15,7 @@
  */
 
 import type { RoutineStep } from "@omp-deck/protocol";
+import i18n from "../../i18n.ts";
 import type { StepResult } from "../types.ts";
 
 export async function executeMcpStep(
@@ -26,9 +27,11 @@ export async function executeMcpStep(
 		status: "failed",
 		stdoutExcerpt: "",
 		stderrExcerpt: "",
-		error:
-			`mcp step is V1.5 (not yet implemented in V1). Requested: server='${step.server}', tool='${step.tool}'. ` +
-			`Workaround: use an 'agent' step with mcp_servers_allowed: ['${step.server}'] and ask the LLM to call ${step.tool}.`,
+		error: i18n.t(
+			"mcp step is V1.5 (not yet implemented in V1). Requested: server='{{server}}', tool='{{tool}}'. " +
+				"Workaround: use an 'agent' step with mcp_servers_allowed: ['{{server}}'] and ask the LLM to call {{tool}}.",
+			{ server: step.server, tool: step.tool },
+		),
 		durationMs: 0,
 	};
 }
