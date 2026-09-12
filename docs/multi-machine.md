@@ -105,7 +105,7 @@ Register machines either by editing `machines.json` before first boot:
 [
   {
     "id": "lab",
-    "name": "实验室",
+    "name": "Lab",
     "baseUrl": "http://100.64.0.2:8790",
     "token": "CHANGE_ME_host_token",
     "defaultCwd": "/home/user/projects"
