@@ -46,10 +46,8 @@ export function openDb(): Promise<IDBDatabase> {
 			if (!db.objectStoreNames.contains(HTTP_OPS_STORE)) {
 				db.createObjectStore(HTTP_OPS_STORE, { keyPath: "id" });
 			}
-			// v4: persisted optimistic storefront install phase. Mirrors
-			// `useStorefrontStore` so the install chip survives a full tab
-			// close — pending installs older than 30s are reverted on
-			// bootstrap, confirmed installs survive.
+			// v4 historically created storefront-installs; keep creating it so
+			// existing DB upgrades stay compatible even though the UI is gone.
 			if (!db.objectStoreNames.contains(STOREFRONT_INSTALLS_STORE)) {
 				db.createObjectStore(STOREFRONT_INSTALLS_STORE, { keyPath: "id" });
 			}
@@ -171,115 +169,6 @@ export async function httpOpsSize(): Promise<number> {
 	});
 }
 
-/* ───────────── Storefront install phase (optimistic UI) ───────────── */
-
-export interface StorefrontInstallRecord {
-	id: string;
-	phase: "pending" | "done";
-	installedAt?: number;
-	/** ms epoch when this row was first written. Used by bootstrap to
-	 *  decide whether a stale "pending" entry should be reverted. */
-	enqueuedAt: number;
-}
-
-/** Best-effort IDB write; never throws into the caller. The chip UX
- *  is optimistic and the network request is the source of truth — a
- *  failed IDB write just means the row is gone after the next reload,
- *  which is the same behavior we had before persistence. */
-async function putStorefront(record: StorefrontInstallRecord): Promise<void> {
-	if (typeof indexedDB === "undefined") return;
-	try {
-		const db = await openDb();
-		await new Promise<void>((resolve, reject) => {
-			const tx = db.transaction(STOREFRONT_INSTALLS_STORE, "readwrite");
-			tx.objectStore(STOREFRONT_INSTALLS_STORE).put(record);
-			tx.oncomplete = (): void => { db.close(); resolve(); };
-			tx.onerror = (): void => { db.close(); reject(tx.error ?? new Error("idb storefront put failed")); };
-		});
-	} catch {
-		// Swallow — see comment above.
-	}
-}
-
-async function deleteStorefront(id: string): Promise<void> {
-	if (typeof indexedDB === "undefined") return;
-	try {
-		const db = await openDb();
-		await new Promise<void>((resolve, reject) => {
-			const tx = db.transaction(STOREFRONT_INSTALLS_STORE, "readwrite");
-			tx.objectStore(STOREFRONT_INSTALLS_STORE).delete(id);
-			tx.oncomplete = (): void => { db.close(); resolve(); };
-			tx.onerror = (): void => { db.close(); reject(tx.error ?? new Error("idb storefront delete failed")); };
-		});
-	} catch {
-		// Swallow.
-	}
-}
-
-export const storefrontInstalls = {
-	begin(id: string): void {
-		// Fire-and-forget; current row is overwritten if it exists so a
-		// re-click on a stale pending install refreshes the timestamp.
-		void putStorefront({ id, phase: "pending", enqueuedAt: Date.now() });
-	},
-	confirm(id: string): void {
-		// `done` rows survive bootstrap; the timestamp below is what the
-		// connection indicator pill (and any future analytics) needs.
-		void putStorefront({ id, phase: "done", installedAt: Date.now(), enqueuedAt: Date.now() });
-	},
-	revert(id: string): void {
-		void deleteStorefront(id);
-	},
-	async list(): Promise<Array<{ id: string; phase: "pending" | "done"; installedAt?: number }>> {
-		if (typeof indexedDB === "undefined") return [];
-		const db = await openDb();
-		return await new Promise<Array<{ id: string; phase: "pending" | "done"; installedAt?: number }>>(
-			(resolve, reject) => {
-				const tx = db.transaction(STOREFRONT_INSTALLS_STORE, "readonly");
-				const req = tx.objectStore(STOREFRONT_INSTALLS_STORE).getAll();
-				req.onsuccess = (): void => {
-					db.close();
-					const rows = (req.result ?? []) as StorefrontInstallRecord[];
-					resolve(
-						rows.map((r) => {
-							const out: { id: string; phase: "pending" | "done"; installedAt?: number } = {
-								id: r.id,
-								phase: r.phase,
-							};
-							if (r.installedAt !== undefined) out.installedAt = r.installedAt;
-							return out;
-						}),
-					);
-				};
-				req.onerror = (): void => {
-					db.close();
-					reject(req.error ?? new Error("idb storefront list failed"));
-				};
-			},
-		);
-	},
-
-	/**
-	 * Richer read used by bootstrap reconciliation — needs the raw
-	 * `enqueuedAt` timestamp to decide whether a stale `pending` row
-	 * (network request died, never confirmed or reverted) should be
-	 * reverted. Not exposed on the public `list()` because the chip UX
-	 * does not care about timestamps.
-	 */
-	async listRaw(): Promise<StorefrontInstallRecord[]> {
-		if (typeof indexedDB === "undefined") return [];
-		const db = await openDb();
-		return await new Promise<StorefrontInstallRecord[]>((resolve, reject) => {
-			const tx = db.transaction(STOREFRONT_INSTALLS_STORE, "readonly");
-			const req = tx.objectStore(STOREFRONT_INSTALLS_STORE).getAll();
-			req.onsuccess = (): void => {
-				db.close();
-				resolve((req.result ?? []) as StorefrontInstallRecord[]);
-			};
-			req.onerror = (): void => {
-				db.close();
-				reject(req.error ?? new Error("idb storefront listRaw failed"));
-			};
-		});
-	},
-};
+/* Storefront install IDB API removed with the storefront UI.
+ * The `storefront-installs` object store may still exist in older
+ * browser DBs (DB_VERSION 4); it is unused and left alone on upgrade. */

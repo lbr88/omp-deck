@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Wrench, X } from "lucide-react";
 import { useStore, fetchMcpTools } from "@/lib/store";
-import { storefrontApi } from "@/lib/storefront-api";
+import { mcpApi } from "@/lib/mcp-api";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -41,7 +41,7 @@ export function McpToolsPopover({ name, onClose }: Props) {
 	async function toggle(tool: string, next: boolean): Promise<void> {
 		setBusyTool(tool);
 		try {
-			await storefrontApi.toggleMcpTool(name, tool, next);
+			await mcpApi.toggleMcpTool(name, tool, next);
 			// The server broadcasts `mcp_tools_changed` after a successful
 			// write, which evicts our cached entry and re-runs the effect
 			// above. No local state mutation needed.

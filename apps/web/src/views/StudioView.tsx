@@ -7,7 +7,7 @@
  *   B (2/3)  composer     ChatView body (no NavRail, no top bar)
  *   C (1/3)  tasks        TasksView
  *
- * The other 3 panes (gholam, prompts, storefront) are reachable through
+ * The other panes (gholam, prompts) are reachable through
  * the preset selector in the header and through deep links
  * (?pane=gholam). The `/studio/gholam` route focuses on the Gholam pane
  * and mounts the full `<GholamView />` outside the 3-col grid.
@@ -24,7 +24,6 @@ import { ComposerPane } from "@/views/studio/ComposerPane";
 import { GholamPane } from "@/views/studio/GholamPane";
 import { KbPane } from "@/views/studio/KbPane";
 import { PromptsPane } from "@/views/studio/PromptsPane";
-import { StorefrontPane } from "@/views/studio/StorefrontPane";
 import { TasksPane } from "@/views/studio/TasksPane";
 
 import { GholamView } from "./GholamView";
@@ -57,7 +56,7 @@ function StudioGrid(): JSX.Element {
 	const [searchParams] = useSearchParams();
 
 	const all: PaneDescriptor[] = useMemo(
-		() => (["kb", "composer", "tasks", "gholam", "prompts", "storefront"] as const).map((id): PaneDescriptor => {
+		() => (["kb", "composer", "tasks", "gholam", "prompts"] as const).map((id): PaneDescriptor => {
 			switch (id) {
 				case "kb":
 					return { id, title: "KB", render: () => <KbPane readOnly />, capabilities: ["edit"], defaultPreset: "wide" };
@@ -69,8 +68,6 @@ function StudioGrid(): JSX.Element {
 					return { id, title: "Gholam", render: () => <GholamPane />, capabilities: ["edit", "danger"], defaultPreset: "sidebar-left" };
 				case "prompts":
 					return { id, title: "Prompts", render: () => <PromptsPane />, capabilities: ["edit"], defaultPreset: "wide" };
-				case "storefront":
-					return { id, title: "Storefront", render: () => <StorefrontPane />, capabilities: ["execute"], defaultPreset: "wide" };
 			}
 		}),
 		[],
@@ -184,7 +181,7 @@ function gridClass(preset: Preset): string {
 function slotMap(preset: Preset): (string | null)[] {
 	switch (preset) {
 		case "compact":
-			return ["kb", "composer", "tasks", "gholam", "prompts", "storefront"];
+			return ["kb", "composer", "tasks", "gholam", "prompts"];
 		case "sidebar-left":
 			return ["kb", "composer", null, "tasks", "gholam", "prompts"];
 		case "wide":

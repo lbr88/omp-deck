@@ -6,7 +6,7 @@ import { Layout } from "@/components/Layout";
 import { OpenShipPanel } from "@/views/openship/OpenShipPanel";
 import { McpServerActions } from "@/components/mcp/McpServerActions";
 import { McpToolsPopover } from "@/components/mcp/McpToolsPopover";
-import { storefrontApi } from "@/lib/storefront-api";
+import { mcpApi } from "@/lib/mcp-api";
 import { useStore, pushMcpToast } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next";
  *      state, latency, and tool count.
  *   2. Wire the shared `McpServerActions` (enable/disable/refresh/delete)
  *      and `McpToolsPopover` (per-tool toggle) so this page stays in
- *      lock-step with the chrome chip popover and the storefront strip.
+ *      lock-step with the chrome chip popover and the chrome chip popover.
  *   3. Offer an "Add MCP server" form that posts to `/api/mcp/install`
  *      with name + type + command/url.
  */
@@ -30,7 +30,7 @@ export function IntegrationsView() {
 
 	useEffect(() => {
 		if (response) return;
-		void storefrontApi.mcpHealth().then((next) => {
+		void mcpApi.mcpHealth().then((next) => {
 			useStore.setState((s) =>
 				s.mcpHealth.response
 					? {}
@@ -49,7 +49,7 @@ export function IntegrationsView() {
 						<div className="meta mb-2">Integrations</div>
 						<div className="text-sm text-ink-3">
 							Manage MCP servers — the action group is shared with the chrome
-							chip popover and the storefront strip.
+							chip popover and the chrome chip popover.
 						</div>
 					</div>
 				}
@@ -117,7 +117,7 @@ function EmptyHint() {
 			</div>
 			<p className="text-sm text-ink-2">
 				Install a server from the catalog or paste a Smithery URL — every server you
-				add lands here, in the chrome chip popover, and in the storefront strip.{" "}
+				add lands here, and in the chrome chip popover.{" "}
 				<a
 					href="https://github.com/bjb2/omp-deck/blob/main/docs/proposals/routines-v1-plan.md#5-integrations-via-mcp-v15"
 					target="_blank"
@@ -243,13 +243,13 @@ function AddMcpDialog({ onClose }: { onClose: () => void }) {
 							args: command.trim().split(/\s+/).slice(1),
 						}
 					: { type: "http" as const, url: url.trim() };
-			const res = await storefrontApi.installMcpServer(trimmedName, config);
+			const res = await mcpApi.installMcpServer(trimmedName, config);
 			if (!res?.ok) {
 				pushMcpToast("error", `Install failed: ${trimmedName}`, res?.error ?? "Unknown error");
 				return;
 			}
 			pushMcpToast("info", `Installed ${trimmedName}`, "Probing…");
-			await storefrontApi.probeMcpServers();
+			await mcpApi.probeMcpServers();
 			onClose();
 		} finally {
 			setBusy(false);

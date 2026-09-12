@@ -71,11 +71,9 @@ import { buildAgentConfigRouter } from "./routes-agent-config.ts";
 import { buildPushRouter } from "./routes-push.ts";
 import { buildHarnessRouter } from "./routes-harness.ts";
 import { buildDiscoveryRouter } from "./discovery/routes.ts";
-import { buildStorefrontRouter } from "./routes-storefront.ts";
 import { buildPromptsRouter } from "./routes-prompts.ts";
 import { buildMcpInstallRouter } from "./routes-mcp-install.ts";
 import { buildSkillsInstallRouter } from "./routes-skills-install.ts";
-import { buildStorefrontInstalledRouter } from "./routes-storefront-installed.ts";
 import { buildTranscribeRouter } from "./routes-transcribe.ts";
 import { buildGholamChatsRouter } from "./routes-gholam-chats.ts";
 import { buildRoutesOverview } from "./routes-overview.ts";
@@ -495,15 +493,10 @@ export function buildRouter(
 	app.route("/", buildHarnessRouter(bridge));
 	app.route("/", buildPromptsRouter());
 	app.route("/", buildDiscoveryRouter());
-	app.route("/", buildStorefrontRouter());
 	app.route("/", buildMcpHealthRouter(getMcpHealthProbe()));
-	// Per-section install endpoints + installed-flags snapshot.
-	// Mounted at the parent path used by the existing /api/mcp and /api/skills
-	// routers so client dispatch (InstallButton) lands on /api/mcp/install,
-	// /api/skills/install, /api/storefront/installed without prefix collisions.
+	// Per-section install endpoints for MCP + skills.
 	app.route("/mcp", buildMcpInstallRouter());
 	app.route("/skills", buildSkillsInstallRouter());
-	app.route("/storefront", buildStorefrontInstalledRouter(marketplace, skills));
 	// Persistent Gholam chat history — §1 of docs/GENERATIVE.md. Mounted
 	// flat under "/gholam/chats" so the legacy "/api/gholam/*" control
 	// surface in buildHarnessRouter stays conflict-free.

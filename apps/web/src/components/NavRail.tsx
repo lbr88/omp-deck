@@ -14,7 +14,6 @@ import {
 	SlidersHorizontal,
 	Terminal,
 	Settings,
-	ShoppingBag,
 	Sparkles,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -36,7 +35,6 @@ const ITEMS: ReadonlyArray<{
 	{ to: "/routines", label: "Routines", icon: Clock },
 	{ to: "/workflows", label: "Workflows", icon: GitMerge },
 	{ to: "/skills", label: "Skills", icon: Sparkles },
-	{ to: "/storefront", label: "Storefront", icon: ShoppingBag },
 	{ to: "/gholam", label: "Gholam", icon: GholamIcon },
 	{ to: "/prompts/library", label: "Prompts", icon: BookOpen },
 	{ to: "/prompts/discover", label: "Discover", icon: Compass },

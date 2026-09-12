@@ -37,7 +37,7 @@ import { useInstallPrompt, usePushSubscription } from "@/lib/pwa";
 import { useStore, type NotificationItem } from "@/lib/store";
 import { THEMES, useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
-import i18n, { SUPPORTED_LANGS, getStoredLang, setLang } from "@/i18n";
+import i18n from "@/i18n";
 
 const SECTIONS = [
 	{ id: "account", label: "Account", description: "Your sign-in, password and devices" },
@@ -1217,23 +1217,6 @@ function AppearanceSection() {
 				</p>
 			</div>
 
-			<div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line bg-paper-2 px-3 py-2 text-sm">
-				<div className="min-w-0">
-					<div className="meta">{t("Language")}</div>
-					<div className="mt-0.5 text-xs text-ink-3">{t("Interface language for this browser.")}</div>
-				</div>
-				<select
-					value={getStoredLang()}
-					onChange={(e) => setLang(e.target.value as (typeof SUPPORTED_LANGS)[number])}
-					className="rounded-md border border-line bg-paper px-2 py-1 text-sm"
-				>
-					{SUPPORTED_LANGS.map((l) => (
-						<option key={l} value={l}>
-							{l === "en" ? "English" : "中文"}
-						</option>
-					))}
-				</select>
-			</div>
 
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{THEMES.map((def) => (

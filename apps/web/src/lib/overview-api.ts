@@ -1,5 +1,5 @@
 /**
- * Typed fetch wrapper for `/api/overview`. Best-effort like storefront-api:
+ * Typed fetch wrapper for `/api/overview`. Best-effort like mcp-api:
  * a dead server yields an empty-but-valid response so the dashboard still
  * renders its shell instead of blanking out.
  */

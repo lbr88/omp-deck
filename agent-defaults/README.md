@@ -5,7 +5,7 @@ The starting contents of the omp agent directory (`~/.omp/agent`, or wherever
 container start.
 
 This exists because a container begins with an empty agent directory. On a
-laptop that directory accumulates over months — subagents, skills, extensions,
+laptop that directory accumulates over months — skills, extensions,
 rules, MCP servers, model routing — and it is most of what makes the agent
 behave like *yours*. Without a seed, every image rebuild keeps the deck and
 loses the agent's character.
@@ -14,7 +14,6 @@ loses the agent's character.
 
 | Path | What it is |
 |---|---|
-| `agents/` | Subagent definitions the agent can delegate to |
 | `managed-skills/` | Skills available via `skill://<name>` |
 | `extensions/` | Session extensions loaded by the SDK |
 | `rules/`, `RULES.md`, `AGENTS.md` | Standing instructions |

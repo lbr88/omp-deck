@@ -21,10 +21,6 @@ import { PromptsDiscover } from "./views/PromptsDiscover";
 import { PromptsShare } from "./views/PromptsShare";
 import { PreviewView } from "./views/PreviewView";
 import { StudioView } from "./views/StudioView";
-import { StorefrontHome } from "./views/storefront/StorefrontHome";
-import { StorefrontSection } from "./views/storefront/StorefrontSection";
-import { StorefrontDetail } from "./views/storefront/StorefrontDetail";
-import { StorefrontSearch } from "./views/storefront/StorefrontSearch";
 import { OverviewView } from "./views/OverviewView";
 import { ReceiptsView } from "./views/ReceiptsView";
 import { onboardingApi } from "./lib/onboarding-api";
@@ -138,11 +134,6 @@ const router = createBrowserRouter([
 				],
 			},
 			{ path: "/preview/:route", element: <PreviewView /> },
-			// Storefront (§1 of docs/STOREFRONT.md) — discovery, sections, detail.
-			{ path: "/storefront", element: <StorefrontHome /> },
-			{ path: "/storefront/search", element: <StorefrontSearch /> },
-			{ path: "/storefront/:section", element: <StorefrontSection /> },
-			{ path: "/storefront/:section/:id", element: <StorefrontDetail /> },
 		],
 	},
 ]);

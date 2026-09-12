@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Download, Loader2, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
 import { FlaskConical } from "lucide-react";
@@ -184,12 +183,6 @@ export function MarketplaceView() {
 							<div className="text-xs text-ink-3">
 								{loading ? t("loading...") : t("{{shown}} / {{total}}", { shown: filtered.length, total: data?.catalog.length ?? 0 })}
 							</div>
-							<Link
-								to="/storefront"
-								className="rounded-md border border-line bg-paper-2 px-2 py-1 text-xs text-ink-2 hover:border-ink/30 hover:text-ink"
-							>
-								Storefront →
-							</Link>
 							<div className="flex-1" />
 							<div data-tooltip-key="marketplace.search" className="flex items-center gap-2 rounded-md border border-line bg-paper-2 px-2 py-1 text-xs">
 								<Search className="h-3.5 w-3.5 text-ink-3" />

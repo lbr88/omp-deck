@@ -6,8 +6,7 @@ import { loadManagedEnvIntoProcess } from "./env-store.ts";
 import { applyDeckEnv } from "./i18n.ts";
 
 loadManagedEnvIntoProcess();
-// .env may carry OMP_DECK_LANG; re-apply after env load so server messages
-// (API errors, env descriptions, notification templates) match the deck config.
+// Re-apply i18n after env load (language is English-only).
 applyDeckEnv();
 
 import type { Server, ServerWebSocket } from "bun";
@@ -228,7 +227,7 @@ async function main(): Promise<void> {
 
 	// Seed the canonical Anthropic marketplace on first boot. The deck ships
 	// no marketplace registry, so a fresh container boots with an empty
-	// catalog and the marketplace / storefront / prompts-discover /
+	// catalog and the marketplace / prompts-discover /
 	// discovery-search surfaces all show empty. Idempotent: only runs when
 	// the registry has zero entries, so user-added marketplaces and later
 	// boots both no-op. Non-fatal: network/SSL failures are logged and

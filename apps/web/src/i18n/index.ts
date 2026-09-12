@@ -1,42 +1,33 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import en from "./locales/en.json";
-import zh from "./locales/zh.json";
 
 export const LANG_STORAGE_KEY = "omp-deck:lang";
-export const SUPPORTED_LANGS = ["en", "zh"] as const;
+export const SUPPORTED_LANGS = ["en"] as const;
 export type Lang = (typeof SUPPORTED_LANGS)[number];
 
 export function getStoredLang(): Lang {
-	try {
-		const v = localStorage.getItem(LANG_STORAGE_KEY);
-		if (v === "en" || v === "zh") return v;
-	} catch {
-		// localStorage unavailable; fall through to default
-	}
-	const nav = typeof navigator !== "undefined" ? String(navigator.language ?? "") : "";
-	return nav.toLowerCase().startsWith("zh") ? "zh" : "en";
+	return "en";
 }
 
-export function setLang(lang: Lang): void {
+export function setLang(_lang: Lang): void {
 	try {
-		localStorage.setItem(LANG_STORAGE_KEY, lang);
+		localStorage.setItem(LANG_STORAGE_KEY, "en");
 	} catch {
-		// ignore storage failures; in-memory switch still applies
+		// ignore storage failures
 	}
-	void i18n.changeLanguage(lang);
+	void i18n.changeLanguage("en");
 }
 
 i18n.use(initReactI18next).init({
 	resources: {
 		en: { translation: en },
-		zh: { translation: zh },
 	},
-	lng: getStoredLang(),
+	lng: "en",
 	fallbackLng: "en",
 	interpolation: { escapeValue: false },
 	returnEmptyString: false,
-	missingKeyHandler: (lngs, _ns, key) => {
+	missingKeyHandler: (_lngs, _ns, key) => {
 		// Dev aid: collect every key that failed to resolve so the dictionary
 		// can be completed (esp. keys passed via constants like t(section.label)).
 		if (typeof window === "undefined" || !key) return;

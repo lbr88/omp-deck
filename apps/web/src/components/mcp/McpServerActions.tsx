@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Loader2, Power, RefreshCw, Trash2, Wrench } from "lucide-react";
 import type { McpHealthStatus, McpServerEntry } from "@omp-deck/protocol";
 import { useStore, pushMcpToast } from "@/lib/store";
-import { storefrontApi } from "@/lib/storefront-api";
+import { mcpApi } from "@/lib/mcp-api";
 import { cn } from "@/lib/utils";
 
 type McpHealthState = McpHealthStatus["state"];
@@ -14,7 +14,7 @@ interface Props {
 	 *  button is rendered. Pulled from `McpHealthStatus.toolCount`. */
 	toolCount?: number;
 	/** Compact rendering (chrome chip popover row) drops the icon padding
-	 *  and labels; full mode (storefront strip + /integrations) shows them. */
+	 *  and labels; full mode (/integrations) shows them. */
 	variant?: "compact" | "full";
 	/** Lets the host render an inline tools popover instead of a button. */
 	onOpenTools?: () => void;
@@ -23,7 +23,7 @@ interface Props {
 /**
  * Shared per-server action group — power toggle, refresh probe, delete,
  * and an "Open tools" affordance when the server advertises any. All
- * three call sites (chrome chip popover, storefront strip,
+ * call sites (chrome chip popover,
  * `/integrations`) compose this so optimistic updates + toasts stay
  * consistent.
  */
@@ -67,7 +67,7 @@ export function McpServerActions({
 		if (busy) return;
 		setBusy("refresh");
 		try {
-			await storefrontApi.probeMcpServers();
+			await mcpApi.probeMcpServers();
 			// The probe itself broadcasts `mcp_health`; nothing to do here.
 		} catch {
 			/* probe failure already surfaced via the chip dot */

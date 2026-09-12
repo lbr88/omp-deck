@@ -398,11 +398,11 @@ export const ENV_SCHEMA: EnvSchemaEntry[] = [
 		key: "OMP_DECK_LANG",
 		defaultValue: "en",
 		valueType: "enum",
-		options: ["en", "zh"],
+		options: ["en"],
 		sensitive: false,
 		restartRequired: true,
 		hotApply: false,
-		description: "Server message language (en | zh). Restart the server to apply.",
+		description: "Server message language (English only). Restart the server to apply.",
 	},
 	{
 		key: "OMP_DECK_ACCESS_TOKEN",

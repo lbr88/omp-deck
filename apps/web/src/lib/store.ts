@@ -1408,12 +1408,12 @@ function readModelSelection(): { provider: string; id: string } | undefined {
 	return undefined;
 }
 
-import { storefrontApi } from "./storefront-api";
+import { mcpApi } from "./mcp-api";
 
 // ─── MCP toast + tools helpers ──────────────────────────────────────────────
 /**
  * Single entry point for MCP-related toasts. Shared between the chrome
- * popover, the storefront strip, and `/integrations` so every action
+ * popover and `/integrations` so every action
  * surface lands the same `notifications[]` shape on the store.
  */
 export function pushMcpToast(
@@ -1451,7 +1451,7 @@ export function fetchMcpTools(name: string): Promise<ListMcpToolsResponse | null
 	if (cached && Date.now() - cached.fetchedAt < 30_000) {
 		return Promise.resolve({ name, tools: cached.tools, disabledTools: cached.disabledTools });
 	}
-	return storefrontApi.mcpTools(name).then((res) => {
+	return mcpApi.mcpTools(name).then((res) => {
 		if (res) useStore.getState().cacheMcpTools(name, res);
 		return res;
 	});

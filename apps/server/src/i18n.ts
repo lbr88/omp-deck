@@ -1,49 +1,42 @@
 /**
  * Server-side i18n for user-visible messages (API errors, env descriptions,
- * notification templates). Language is chosen once at boot from
- * OMP_DECK_LANG (en | zh, default en). Log lines stay English on purpose.
+ * notification templates). English only — Chinese locale was removed.
+ * Log lines stay English on purpose.
  *
  * Dictionary convention: key = the original English string (whitespace
- * normalized); the en resource maps each key to itself, zh carries the
- * translation. `i18n.t("…")` calls are scanned at build time to keep the
- * dictionaries in sync.
+ * normalized); the en resource maps each key to itself.
+ * `i18n.t("…")` calls are scanned at build time to keep the dictionaries in sync.
  */
 import i18n from "i18next";
 
 import en from "./i18n/en";
-import zh from "./i18n/zh";
 
-export type ServerLang = "en" | "zh";
+export type ServerLang = "en";
 
-export function resolveServerLang(env: Record<string, string | undefined>): ServerLang {
-	const v = env.OMP_DECK_LANG?.trim().toLowerCase();
-	if (v === "zh" || v === "zh-cn" || v === "zh-hans") return "zh";
+export function resolveServerLang(_env: Record<string, string | undefined>): ServerLang {
 	return "en";
 }
 
 void i18n.init({
 	resources: {
 		en: { translation: en },
-		zh: { translation: zh },
 	},
-	lng: resolveServerLang(process.env),
+	lng: "en",
 	fallbackLng: "en",
 	interpolation: { escapeValue: false },
 	returnEmptyString: false,
 });
 
 export function getServerLang(): ServerLang {
-	return i18n.language === "zh" ? "zh" : "en";
+	return "en";
 }
 
 /**
  * Re-evaluate the language after the deck-managed .env has been loaded into
- * process.env (loadManagedEnvIntoProcess runs after module imports, so the
- * boot-time init above only sees the launching process env).
+ * process.env. Kept as a no-op-friendly re-apply so boot order stays stable.
  */
 export function applyDeckEnv(): void {
-	const lang = resolveServerLang(process.env);
-	if (i18n.language !== lang) void i18n.changeLanguage(lang);
+	if (i18n.language !== "en") void i18n.changeLanguage("en");
 }
 
 export default i18n;

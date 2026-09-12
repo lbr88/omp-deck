@@ -10,7 +10,6 @@ One folder, six research files, one synthesis. Read in this order.
    - Tier 1, 4.4 → [02-multi-agent-orchestration.md](02-multi-agent-orchestration.md)
    - Tier 4 → [03-pi-lineage-acp-mcp.md](03-pi-lineage-acp-mcp.md)
    - Tier 2, 5.1, 5.2 → [04-adhd-focus-productivity.md](04-adhd-focus-productivity.md)
-   - Tier 3, 5.3 → [06-storefront-ux-patterns.md](06-storefront-ux-patterns.md)
 3. **Cross-reference:** [05-omp-deck-current-state.md](05-omp-deck-current-state.md) — the ground-truth map of the existing app surface. Every recommendation cites a slot in this file.
 
 ## File summary
@@ -23,7 +22,6 @@ One folder, six research files, one synthesis. Read in this order.
 | `03-pi-lineage-acp-mcp.md` | 21 KB | 16 projects, 9 patterns | Pi lineage + ACP/MCP ecosystem |
 | `04-adhd-focus-productivity.md` | 25 KB | 13 projects, 12 patterns | ADHD/focus productivity category |
 | `05-omp-deck-current-state.md` | 24 KB | 24 known gaps | Ground-truth map of omp-deck |
-| `06-storefront-ux-patterns.md` | 25 KB | 12 references, 12 patterns | Storefront UX category |
 
 **Total:** ~200 KB, ~83 distinct projects/tools referenced, ~57 distinct Pattern-to-apply entries.
 
