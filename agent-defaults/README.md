@@ -14,7 +14,6 @@ loses the agent's character.
 
 | Path | What it is |
 |---|---|
-| `managed-skills/` | Skills available via `skill://<name>` |
 | `extensions/` | Session extensions loaded by the SDK |
 | `rules/`, `RULES.md`, `AGENTS.md` | Standing instructions |
 | `WATCHDOG.md`, `WATCHDOG.yml` | Watchdog notes and config |
