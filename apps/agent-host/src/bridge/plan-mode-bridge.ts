@@ -447,15 +447,18 @@ export class PlanModeBridge {
 	}
 
 	async #runResolve15(input: unknown): Promise<AgentToolResult<ResolveToolDetailsWire>> {
-		const resolveModule = await import("@oh-my-pi/pi-coding-agent/tools/resolve");
-		const runResolve = resolveModule.runResolveInvocation;
+		// SDK 15-only API — typed loosely so this file typechecks against SDK 17.
+		const resolveModule = (await import("@oh-my-pi/pi-coding-agent/tools/resolve")) as Record<string, unknown>;
+		const runResolve = resolveModule.runResolveInvocation as
+			| ((input: unknown, opts: Record<string, unknown>) => Promise<AgentToolResult<ResolveToolDetailsWire>>)
+			| undefined;
 		if (typeof runResolve !== "function") {
 			throw new ToolError(bridgeT("resolve invocation is not available on this SDK build"));
 		}
-		return runResolve(input as Parameters<typeof runResolve>[0], {
+		return runResolve(input, {
 			sourceToolName: "plan_approval",
 			label: bridgeT("Plan ready for approval"),
-			apply: async (_reason, extra) => {
+			apply: async (_reason: unknown, extra: { title?: string } | undefined) => {
 				if (!this.enabled) {
 					throw new ToolError(bridgeT("Plan mode is not active."));
 				}
@@ -525,7 +528,7 @@ export class PlanModeBridge {
 							finalPlanFilePath: suggestedFinalPath,
 							title: normalized.title,
 							planExists: true,
-						} satisfies PlanApprovalDetails,
+						},
 					};
 				}
 
@@ -542,13 +545,18 @@ export class PlanModeBridge {
 
 				// SDK 15-only export (SDK 17 never renames — the plan stays at
 				// its file and `setPlanReferencePath` pins it instead).
-				const { renameApprovedPlanFile } = await import("@oh-my-pi/pi-coding-agent/plan-mode/approved-plan");
-				await renameApprovedPlanFile({
-					planFilePath: planFilePathAtApproval,
-					finalPlanFilePath,
-					getArtifactsDir: this.getArtifactsDir,
-					getSessionId: this.getSessionId,
-				});
+				const approvedPlan = (await import("@oh-my-pi/pi-coding-agent/plan-mode/approved-plan")) as Record<string, unknown>;
+				const renameApprovedPlanFile = approvedPlan.renameApprovedPlanFile as
+					| ((args: Record<string, unknown>) => Promise<void>)
+					| undefined;
+				if (typeof renameApprovedPlanFile === "function") {
+					await renameApprovedPlanFile({
+						planFilePath: planFilePathAtApproval,
+						finalPlanFilePath,
+						getArtifactsDir: this.getArtifactsDir,
+						getSessionId: this.getSessionId,
+					});
+				}
 
 				this.#broadcast({
 					type: "plan_proposal_resolved",
@@ -593,7 +601,7 @@ export class PlanModeBridge {
 						finalPlanFilePath,
 						title: stripMdExtension(extractFileName(finalPlanFilePath)),
 						planExists: true,
-					} satisfies PlanApprovalDetails,
+					},
 				};
 			},
 		});
@@ -681,7 +689,7 @@ export class PlanModeBridge {
 					finalPlanFilePath,
 					title: normalized.title,
 					planExists: true,
-				} satisfies PlanApprovalDetails,
+				},
 			};
 		}
 
@@ -729,7 +737,7 @@ export class PlanModeBridge {
 				finalPlanFilePath,
 				title: stripMdExtension(extractFileName(finalPlanFilePath)),
 				planExists: true,
-			} satisfies PlanApprovalDetails,
+			},
 		};
 	}
 

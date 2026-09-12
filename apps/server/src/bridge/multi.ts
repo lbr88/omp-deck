@@ -153,6 +153,14 @@ export class MultiAgentBridge implements AgentBridge {
 		return this.remote.respondToPlanApproval(sessionId, proposalId, response);
 	}
 
+	async listIdleSessions(idleMs: number): Promise<{ sessionId: string; lastActivityAt: number }[]> {
+		const [local, remote] = await Promise.all([
+			this.local.listIdleSessions(idleMs),
+			this.remote.listIdleSessions(idleMs),
+		]);
+		return [...local, ...remote];
+	}
+
 	async dispose(): Promise<void> {
 		await Promise.all([this.local.dispose(), this.remote.dispose()]);
 	}

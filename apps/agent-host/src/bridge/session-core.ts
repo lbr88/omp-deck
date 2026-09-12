@@ -850,7 +850,7 @@ export class CoreSessionHandle implements SessionHandle {
 		for (const entry of survivors) {
 			const opts: Record<string, unknown> = { streamingBehavior: entry.behavior };
 			if (entry.images && entry.images.length > 0) opts.images = entry.images;
-			promises.push(this.session.prompt(entry.text, opts as any));
+			promises.push(Promise.resolve(this.session.prompt(entry.text, opts as any)).then(() => undefined));
 		}
 		this.shadowQueue = survivors;
 		try {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, ClipboardList, MessagesSquare, Plus } from "lucide-react";
 import type { SessionSummary } from "@omp-deck/protocol";
 
@@ -213,6 +214,7 @@ function liveSummaryFromUi(s: SessionUi): SessionSummary {
 		aiGeneratedAt: s.meta?.aiGeneratedAt,
 		repoId: undefined,
 		worktree: undefined,
+		agentId: "local",
 	};
 }
 

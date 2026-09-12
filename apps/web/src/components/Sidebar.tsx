@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, RefreshCw } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { api } from "@/lib/api";
@@ -449,5 +450,6 @@ function liveSummaryFromUi(s: SessionUi): SessionSummary {
 		aiGeneratedAt: s.meta?.aiGeneratedAt,
 		repoId: undefined,
 		worktree: undefined,
+		agentId: "local",
 	};
 }

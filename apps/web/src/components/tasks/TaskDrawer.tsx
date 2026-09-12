@@ -70,7 +70,6 @@ export function TaskDrawer({ task, states, machines, onClose, onSave, onAssign, 
 						setTitle(e.target.value);
 						setDirty(true);
 					}}
-					onBlur={maybeSave}
 					placeholder={t("Untitled")}
 					className="flex-1 bg-transparent text-base font-medium text-ink placeholder:text-ink-4 focus:outline-none"
 				/>
@@ -96,8 +95,7 @@ export function TaskDrawer({ task, states, machines, onClose, onSave, onAssign, 
 							setStateId(e.target.value);
 							setDirty(true);
 						}}
-						onBlur={maybeSave}
-						className="field h-6 px-2 text-xs"
+							className="field h-6 px-2 text-xs"
 					>
 						{states.map((s) => (
 							<option key={s.id} value={s.id}>
@@ -135,7 +133,6 @@ export function TaskDrawer({ task, states, machines, onClose, onSave, onAssign, 
 						setBody(v);
 						setDirty(true);
 					}}
-					onBlur={maybeSave}
 					placeholder={t("Notes, acceptance criteria, links…")}
 					className="h-full w-full bg-transparent px-4 py-3 text-sm text-ink placeholder:text-ink-4 focus:outline-none"
 				/>

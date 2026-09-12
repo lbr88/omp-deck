@@ -623,6 +623,7 @@ function parseDryRunError(raw: string): InstallPluginErrorResponse | undefined {
 }
 
 function MarketplaceInspector({ entry, dryRun, onDryRun }: { entry: MarketplaceCatalogEntry | undefined; dryRun?: DryRunState; onDryRun: (entry: MarketplaceCatalogEntry) => void }) {
+	const { t } = useTranslation();
 	if (!entry) {
 		return (
 			<div className="space-y-2 p-3 text-xs text-ink-3">

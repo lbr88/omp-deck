@@ -754,6 +754,13 @@ export class RemoteAgentBridge implements AgentBridge {
 		// Remote machine env is managed via the Machines API, not hot-pushed.
 	}
 
+	async listIdleSessions(idleMs: number): Promise<{ sessionId: string; lastActivityAt: number }[]> {
+		// Host-side reaper owns idle tracking for remote sessions; deck has no
+		// lastActivityAt for them. Return empty so only local sessions are reaped here.
+		void idleMs;
+		return [];
+	}
+
 	async listModels(opts: { sessionId?: string } = {}): Promise<ModelInfo[]> {
 		if (opts.sessionId) {
 			const handle = this.sessions.get(opts.sessionId);
